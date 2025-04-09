@@ -19,6 +19,19 @@ struct List {
   int size;
 };
 
+typedef struct {
+  // idk lol
+} Taskqueue;
+
+// threadpool has a queue of tasks, and a queue of threads
+// an available thread should get matched with the next thread
+// when done, the thread rejoins the threads queue
+typedef struct {
+  Taskqueue queue;
+  pthread_t* threads;
+  pthread_mutex_t queue_mutex;
+} Threadpool;
+
 typedef struct RDD RDD; // forward decl. of struct RDD
 typedef struct List List; // forward decl. of List.
 typedef struct Node Node; // forward decl. of Node.
@@ -49,6 +62,7 @@ struct RDD {
   int numdependencies; // 0, 1, or 2
   int numpartitions;
   // you may want extra data members here
+  RDD* backlink // pointer to the dependendent RDD. the backlink's numdependencies should be reduced by 1 when the current RDD is done
 };
 
 typedef struct {
