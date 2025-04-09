@@ -8,7 +8,15 @@
   (((end.tv_sec - start.tv_sec) * 1000000L) + ((end.tv_nsec - start.tv_nsec) / 1000L))
 
 struct RDD;
-struct List;
+
+struct Node {
+  void* data;
+};
+struct List {
+  struct Node* head;
+  struct Node* tail;
+  int size;
+};
 
 typedef struct RDD RDD; // forward decl. of struct RDD
 typedef struct List List; // forward decl. of List.
@@ -37,7 +45,7 @@ struct RDD {
   
   RDD* dependencies[MAXDEPS];
   int numdependencies; // 0, 1, or 2
-
+  int numpartitions;
   // you may want extra data members here
 };
 

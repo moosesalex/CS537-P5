@@ -1,4 +1,5 @@
 #include "minispark.h"
+#include <stdio.h>
 
 // Working with metrics...
 // Recording the current time in a `struct timespec`:
@@ -36,7 +37,7 @@ RDD *create_rdd(int numdeps, Transform t, void *fn, ...)
   {
     RDD *dep = va_arg(args, RDD *);
     rdd->dependencies[i] = dep;
-    maxpartitions = max(maxpartitions, dep->partitions->size);
+    maxpartitions = max(maxpartitions, dep->partitions);
   }
   va_end(args);
 
