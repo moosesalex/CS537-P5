@@ -1,5 +1,6 @@
 #include "minispark.h"
-#include "stdio.h"
+#include <stdio.h>
+#include <stdlib.h>
 
 // Working with metrics...
 // Recording the current time in a `struct timespec`:
@@ -35,7 +36,7 @@ RDD *create_rdd(int numdeps, Transform t, void *fn, ...)
   int maxpartitions = 0;
   for (int i = 0; i < numdeps; i++)
   {
-    RDD *dep = va_arg(args, RDD *);
+    RDD *dep = va_arg(args, RDD*);
     rdd->dependencies[i] = dep;
     maxpartitions = max(maxpartitions, dep->partitions->size);
   }
@@ -135,6 +136,9 @@ int count(RDD *rdd) {
 
   int count = 0;
   // count all the items in rdd
+  for(int i = 0; i < rdd->numpartitions; i++){
+    count += rdd->partitions[i].size;
+  }
   return count;
 }
 
@@ -143,4 +147,13 @@ void print(RDD *rdd, Printer p) {
 
   // print all the items in rdd
   // aka... `p(item)` for all items in rdd
+  for(int i = 0; i < rdd->numpartitions; i++){
+    Node* current = rdd->partitions[i].head;
+    for(int j = 0; j < rdd->partitions[i].size; j++){
+      //?????
+      p(current->data);
+      
+      current = current->next;
+    }
+  }
 }

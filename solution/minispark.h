@@ -11,6 +11,7 @@ struct RDD;
 
 struct Node {
   void* data;
+  struct Node* next;
 };
 struct List {
   struct Node* head;
@@ -20,6 +21,7 @@ struct List {
 
 typedef struct RDD RDD; // forward decl. of struct RDD
 typedef struct List List; // forward decl. of List.
+typedef struct Node Node; // forward decl. of Node.
 // Minimally, we assume "list_add_elem(List *l, void*)"
 
 // Different function pointer types used by minispark
