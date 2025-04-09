@@ -1,5 +1,5 @@
 #include "minispark.h"
-#include <stdio.h>
+#include "stdio.h"
 
 // Working with metrics...
 // Recording the current time in a `struct timespec`:
@@ -37,7 +37,7 @@ RDD *create_rdd(int numdeps, Transform t, void *fn, ...)
   {
     RDD *dep = va_arg(args, RDD *);
     rdd->dependencies[i] = dep;
-    maxpartitions = max(maxpartitions, dep->partitions);
+    maxpartitions = max(maxpartitions, dep->partitions->size);
   }
   va_end(args);
 
@@ -111,6 +111,18 @@ void execute(RDD* rdd) {
 }
 
 void MS_Run() {
+  // initalize threadpool
+  // needs number of cpu cores
+  cpu_set_t set;
+  CPU_ZERO(&set);
+
+  if (sched_getaffinity(0, sizeof(set), &set) == -1) {
+    perror("sched_getaffinity");
+    exit(1);
+  }
+
+  printf("number of cores available: %d\n", CPU_COUNT(&set));
+
   return;
 }
 
