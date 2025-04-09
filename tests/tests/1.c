@@ -8,12 +8,13 @@ int main(int argc, char* argv[]) {
     return -1;
   }
 
-  MS_Run();
+  //MS_Run();
 
   RDD* files = RDDFromFiles(argv + 1, argc - 1);
-  print(map(files, GetLines), StringPrinter);
+  count(files);
+  print(files, StringPrinter);
 
-  MS_TearDown();
+  //MS_TearDown();
 
   return 0;
 }
