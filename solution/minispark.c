@@ -6,6 +6,8 @@
 #include <unistd.h>
 #include "minispark.h"
 
+#define TASK_QUEUE_BUFFER 255
+
 // Working with metrics...
 // Recording the current time in a `struct timespec`:
 //    clock_gettime(CLOCK_MONOTONIC, &metric->created);
@@ -181,7 +183,7 @@ void testexecute(RDD *rdd)
 }
 
 // allocates a list
-List *list_init(int size)
+List *list_init()
 {
   List *list = malloc(sizeof(List));
   if (list == NULL)
@@ -189,7 +191,6 @@ List *list_init(int size)
     printf("error mallocing new list\n");
     exit(1);
   }
-  list->size = size;
   list->head = NULL;
   list->tail = NULL;
   return list;
@@ -219,28 +220,183 @@ void list_add_elem(List *list, void *data)
   }
 }
 
+// pops the head of the list and returns the data (like FIFO queue)
+void *list_pop(List *list)
+{
+  if (list->head == NULL)
+  {
+    return NULL;
+  }
+  Node *node = list->head;
+  list->head = node->next;
+  void *data = node->data;
+  free(node);
+  return data;
+}
+
+// pops the rear of the queue,
+// returns the data, and increases the rear
+// pointer by 1
+
+// starts a thread
+void *start_thread(void *arg)
+{
+}
+
+void *consumer(void *arg)
+{
+  TaskQueue *queue = (TaskQueue *)arg;
+  while (1)
+  {
+    // get next task from queue (should this be an array?)
+    pthread_mutex_lock(&queue->queue_mutex);
+    while (queue->tasks == 0)
+    {
+      // wait for a task to be added to the queue
+      pthread_cond_wait(&queue->fill, &queue->queue_mutex);
+    }
+  }
+  int tmp = start_thread(&queue->rear); // what is do_get?
+  // signal empty condition variable
+  pthread_cond_signal(&queue->empty);
+  pthread_mutex_unlock(&queue->queue_mutex);
+  // execute task
+  // free task
+  // add metrics to log
+  // if task is done, remove it from the queue
+  // if task is not done, add it back to the queue
+}
+}
+
+TaskQueue *task_queue_init()
+{
+  TaskQueue *taskqueue = malloc(sizeof(TaskQueue));
+  if (taskqueue == NULL)
+  {
+    printf("error mallocing task queue\n");
+    exit(1);
+  }
+  taskqueue->tasks = malloc(sizeof(Task) * TASK_QUEUE_BUFFER);
+  if (taskqueue->tasks == NULL)
+  {
+    printf("error mallocing tasks array\n");
+    exit(1);
+  }
+  taskqueue->size = 0;
+  taskqueue->capacity = TASK_QUEUE_BUFFER;
+  taskqueue->front = 0;
+  taskqueue->rear = 0;
+  if (pthread_mutex_init(&taskqueue->queue_mutex, NULL) != 0)
+  {
+    printf("error initializing queue_mutex\n");
+    exit(1);
+  }
+  if (pthread_cond_init(&taskqueue->fill, NULL) != 0)
+  {
+    printf("error initializing fill condition variable\n");
+    exit(1);
+  }
+  if (pthread_cond_init(&taskqueue->empty, NULL) != 0)
+  {
+    printf("error initializing empty condition variable\n");
+    exit(1);
+  }
+  return taskqueue;
+}
+
 void MS_Run()
 {
   // initalize threadpool
   // needs number of cpu cores
   cpu_set_t set;
   CPU_ZERO(&set);
+<<<<<<< HEAD
 
   // Task *task = malloc(sizeof(Task));
   
+=======
+  int THREAD_NUMBERS = CPU_COUNT(&set);
+
+>>>>>>> 4b6559d514defe7f855e67a4b53ed16dc5b64a13
   if (sched_getaffinity(0, sizeof(set), &set) == -1)
   {
     perror("sched_getaffinity");
     exit(1);
   }
 
-  printf("number of cores available: %d\n", CPU_COUNT(&set));
+  printf("number of cores available: %d\n", THREAD_NUMBERS);
+
+  // create threadpool
+  ThreadPool *pool = malloc(sizeof(ThreadPool));
+  if (pool == NULL)
+  {
+    printf("error mallocing threadpool\n");
+    exit(1);
+  }
+  // initialize threadpool
+  pool->threads = malloc(sizeof(pthread_t) * THREAD_NUMBERS);
+  if (pool->threads == NULL)
+  {
+    printf("error mallocing threadpool threads\n");
+    exit(1);
+  }
+  // initialize task queue
+  pool->taskqueue = task_queue_init();
+  // initialize lock
+  if (pthread_mutex_init(&pool->pool_mutex, NULL) != 0)
+  {
+    printf("error initializing pool_mutex\n");
+    exit(1);
+  }
+
+  // create threads
+  for (int i = 0; i < THREAD_NUMBERS; i++)
+  {
+    // create thread
+    if (pthread_create(&pool->threads[i], NULL, &start_thread, pool) != 0)
+    {
+      printf("error creating thread\n");
+      exit(1);
+    }
+  }
+
+  // create monitoring thread
+  /*
+  pthread_t monitor_thread;
+  if (pthread_create(&monitor_thread, NULL, &monitor_start_thread, NULL) != 0)
+  {
+    printf("error creating monitor thread\n");
+    exit(1);
+  }
+  */
 
   return;
 }
 
 void MS_TearDown()
 {
+
+  // wait for threads to finish
+  /*
+  for (int i = 0; i < THREAD_NUMBERS; i++)
+  {
+    if (pthread_join(threads[i], NULL) != 0)
+    {
+      printf("error joining thread\n");
+      exit(1);
+    }
+  }
+  */
+
+  // wait for monitor thread to finish
+  /*
+  if (pthread_join(monitor_thread, NULL) != 0)
+  {
+    printf("error joining monitor thread\n");
+    exit(1);
+  }
+  */
+
   return;
 }
 

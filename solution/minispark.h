@@ -38,12 +38,16 @@ typedef struct
   TaskMetric *metric;
 } Task;
 
-// a task queue is a queue of tasks (lol)
-// these get eaten by the threads in the threadpool
 typedef struct
 {
-  Task *tasks; // should this be a linkedlist?
+  Task *tasks;
+  int capacity;
   int size;
+  int front;
+  int rear;
+  pthread_mutex_t queue_mutex;
+  pthread_cond_t fill;
+  pthread_cond_t empty;
 } TaskQueue;
 
 // threadpool has a queue of tasks, and a queue of threads
@@ -51,9 +55,9 @@ typedef struct
 // when done, the thread rejoins the threads queue
 typedef struct
 {
-  TaskQueue queue;
+  TaskQueue *taskqueue;
   pthread_t *threads;
-  pthread_mutex_t queue_mutex;
+  pthread_mutex_t pool_mutex;
 } ThreadPool;
 
 typedef struct RDD RDD;   // forward decl. of struct RDD
@@ -95,10 +99,13 @@ struct RDD
 //////// actions ////////
 
 // initializes a list
-List *list_init(int size);
+List *list_init();
 
 // appends data to the passed list
 void list_add_elem(List *list, void *data);
+
+// pops the head of the list and returns it (like FIFO queue)
+void *list_pop(List *list);
 
 // Return the total number of elements in "dataset"
 int count(RDD *dataset);
@@ -145,4 +152,4 @@ void MS_Run();
 // all RDDs allocated during runtime.
 void MS_TearDown();
 
-#endif // __minispark_h__
+#endif // __minispark_h__;
