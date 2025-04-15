@@ -37,7 +37,7 @@ RDD *create_rdd(int numdeps, Transform t, void *fn, ...)
 
   va_list args;
   va_start(args, fn);
-
+  
   int maxpartitions = 0;
   for (int i = 0; i < numdeps; i++)
   {
@@ -46,11 +46,13 @@ RDD *create_rdd(int numdeps, Transform t, void *fn, ...)
     maxpartitions = max(maxpartitions, dep->partitions->size);
   }
   va_end(args);
-
+  
   rdd->numdependencies = numdeps;
   rdd->trans = t;
   rdd->fn = fn;
   rdd->partitions = NULL;
+  rdd->finisheddependencies = 0;
+  
   return rdd;
 }
 
@@ -115,30 +117,58 @@ RDD *RDDFromFiles(char **filenames, int numfiles)
 
 void execute(RDD *rdd)
 {
-  int result = -1;
   // TODO: this should check to make sure RDD has 0 dependencies
   // if it does, we can execute it
   // add partitions to threadpool taskqueue for parallelism
   // if not, iterate to execute it's dependencies
-  if (rdd->numdependencies == 0)
+  if (rdd->numdependencies - rdd->finisheddependencies == 0)
   {
     printf("RDD has no dependencies, ready to execute.\n");
     // in every Transformation case, we should add all partitions to the threadqueue?
-    if (rdd->trans == MAP)
-    {
-      result = count(rdd);
+
+    //What is this for?
+    //if (rdd->trans == MAP)
+    //{
+    //  result = count(rdd);
+    //}
+    //Get the function that the rdd wants to execute
+    void* (*function)(void*) = (void* (*)(void*))rdd->fn;
+    //Materializes the rdd
+    switch(rdd->trans){
+      case MAP:
+        rdd->partitions = rdd->dependencies[0]->partitions;
+        for(int i; i < rdd->numpartitions; i++){
+          Node* current = rdd->partitions[i].head;
+          while(current != NULL){
+            void* newData = current->data;
+            newData = function(newData);
+          }
+        }
+        break;
+      case FILTER:
+
+        break;
+      case JOIN:
+
+        break;
+      case PARTITIONBY:
+
+        break;
+      case FILE_BACKED:
+        return;
+        break;
     }
+    //We don't want to edit numdependencies so I made a new variable to tracked finished ones
+    rdd->backlink->finisheddependencies++;
   }
   else
   {
     printf("RDD has dependencies, executing them first.\n");
-    for (int i = 0; i < rdd->numdependencies; i++)
-    {
+    for (int i = 0; i < rdd->numdependencies; i++){
       execute(rdd->dependencies[i]);
     }
   }
   printf("executing rdd %p\n", rdd);
-  printf("result is %d\n", result);
   return;
 }
 
@@ -197,7 +227,7 @@ void MS_Run()
   CPU_ZERO(&set);
 
   // Task *task = malloc(sizeof(Task));
-
+  
   if (sched_getaffinity(0, sizeof(set), &set) == -1)
   {
     perror("sched_getaffinity");
