@@ -1,19 +1,24 @@
-#include "minispark.h"
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
+#include <sched.h>
+#include <unistd.h>
+#include "minispark.h"
 
 // Working with metrics...
 // Recording the current time in a `struct timespec`:
 //    clock_gettime(CLOCK_MONOTONIC, &metric->created);
 // Getting the elapsed time in microseconds between two timespecs:
 //    duration = TIME_DIFF_MICROS(metric->created, metric->scheduled);
-// Use `print_formatted_metric(...)` to write a metric to the logfile. 
-void print_formatted_metric(TaskMetric* metric, FILE* fp) {
+// Use `print_formatted_metric(...)` to write a metric to the logfile.
+void print_formatted_metric(TaskMetric *metric, FILE *fp)
+{
   fprintf(fp, "RDD %p Part %d Trans %d -- creation %10jd.%06ld, scheduled %10jd.%06ld, execution (usec) %ld\n",
-	  metric->rdd, metric->pnum, metric->rdd->trans,
-	  metric->created.tv_sec, metric->created.tv_nsec / 1000,
-	  metric->scheduled.tv_sec, metric->scheduled.tv_nsec / 1000,
-	  metric->duration);
+          metric->rdd, metric->pnum, metric->rdd->trans,
+          metric->created.tv_sec, metric->created.tv_nsec / 1000,
+          metric->scheduled.tv_sec, metric->scheduled.tv_nsec / 1000,
+          metric->duration);
 }
 
 int max(int a, int b)
@@ -36,7 +41,7 @@ RDD *create_rdd(int numdeps, Transform t, void *fn, ...)
   int maxpartitions = 0;
   for (int i = 0; i < numdeps; i++)
   {
-    RDD *dep = va_arg(args, RDD*);
+    RDD *dep = va_arg(args, RDD *);
     rdd->dependencies[i] = dep;
     maxpartitions = max(maxpartitions, dep->partitions->size);
   }
@@ -94,7 +99,8 @@ RDD *RDDFromFiles(char **filenames, int numfiles)
   for (int i = 0; i < numfiles; i++)
   {
     FILE *fp = fopen(filenames[i], "r");
-    if (fp == NULL) {
+    if (fp == NULL)
+    {
       perror("fopen");
       exit(1);
     }
@@ -107,17 +113,77 @@ RDD *RDDFromFiles(char **filenames, int numfiles)
   return rdd;
 }
 
-void execute(RDD* rdd) {
+void execute(RDD *rdd)
+{
+  int result = -1;
+  // TODO: this should check to make sure RDD has 0 dependencies
+  // if it does, we can execute it
+  // add partitions to threadpool taskqueue for parallelism
+  // if not, iterate to execute it's dependencies
+  // if 2 dependencies, can execute both of them in parallel
+  printf("executing rdd %p\n", rdd);
+  printf("result is %d\n", result);
   return;
 }
 
-void MS_Run() {
+void testexecute(RDD *rdd)
+{
+  printf("called successfully");
+  printf("rdd %p\n", rdd);
+  printf("returning");
+  return;
+}
+
+// allocates a list
+List *list_init(int size)
+{
+  List *list = malloc(sizeof(List));
+  if (list == NULL)
+  {
+    printf("error mallocing new list\n");
+    exit(1);
+  }
+  list->size = size;
+  list->head = NULL;
+  list->tail = NULL;
+  return list;
+}
+
+// adds to list
+void list_add_elem(List *list, void *data)
+{
+  Node *node = malloc(sizeof(Node));
+  if (node == NULL)
+  {
+    printf("error mallocing new node\n");
+    exit(1);
+  }
+  node->next = NULL;
+  node->data = data;
+
+  if (list->head == NULL)
+  {
+    list->head = node;
+    list->tail = node;
+  }
+  else
+  {
+    list->tail->next = node;
+    list->tail = node;
+  }
+}
+
+void MS_Run()
+{
   // initalize threadpool
   // needs number of cpu cores
   cpu_set_t set;
   CPU_ZERO(&set);
 
-  if (sched_getaffinity(0, sizeof(set), &set) == -1) {
+  // Task *task = malloc(sizeof(Task));
+
+  if (sched_getaffinity(0, sizeof(set), &set) == -1)
+  {
     perror("sched_getaffinity");
     exit(1);
   }
@@ -127,32 +193,38 @@ void MS_Run() {
   return;
 }
 
-void MS_TearDown() {
+void MS_TearDown()
+{
   return;
 }
 
-int count(RDD *rdd) {
+int count(RDD *rdd)
+{
   execute(rdd);
 
   int count = 0;
   // count all the items in rdd
-  for(int i = 0; i < rdd->numpartitions; i++){
+  for (int i = 0; i < rdd->numpartitions; i++)
+  {
     count += rdd->partitions[i].size;
   }
   return count;
 }
 
-void print(RDD *rdd, Printer p) {
+void print(RDD *rdd, Printer p)
+{
   execute(rdd);
 
   // print all the items in rdd
   // aka... `p(item)` for all items in rdd
-  for(int i = 0; i < rdd->numpartitions; i++){
-    Node* current = rdd->partitions[i].head;
-    for(int j = 0; j < rdd->partitions[i].size; j++){
+  for (int i = 0; i < rdd->numpartitions; i++)
+  {
+    Node *current = rdd->partitions[i].head;
+    for (int j = 0; j < rdd->partitions[i].size; j++)
+    {
       //?????
       p(current->data);
-      
+
       current = current->next;
     }
   }
