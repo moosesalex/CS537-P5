@@ -266,7 +266,7 @@ void *consumer(void *arg)
   // if task is done, remove it from the queue
   // if task is not done, add it back to the queue
 }
-}
+
 
 TaskQueue *task_queue_init()
 {
@@ -310,15 +310,12 @@ void MS_Run()
   // needs number of cpu cores
   cpu_set_t set;
   CPU_ZERO(&set);
-<<<<<<< HEAD
 
   // Task *task = malloc(sizeof(Task));
   
-=======
   int THREAD_NUMBERS = CPU_COUNT(&set);
 
->>>>>>> 4b6559d514defe7f855e67a4b53ed16dc5b64a13
-  if (sched_getaffinity(0, sizeof(set), &set) == -1)
+  if(sched_getaffinity(0, sizeof(set), &set) == -1)
   {
     perror("sched_getaffinity");
     exit(1);
@@ -328,7 +325,7 @@ void MS_Run()
 
   // create threadpool
   ThreadPool *pool = malloc(sizeof(ThreadPool));
-  if (pool == NULL)
+  if(pool == NULL)
   {
     printf("error mallocing threadpool\n");
     exit(1);
