@@ -120,7 +120,23 @@ void execute(RDD *rdd)
   // if it does, we can execute it
   // add partitions to threadpool taskqueue for parallelism
   // if not, iterate to execute it's dependencies
-  // if 2 dependencies, can execute both of them in parallel
+  if (rdd->numdependencies == 0)
+  {
+    printf("RDD has no dependencies, ready to execute.\n");
+    // in every Transformation case, we should add all partitions to the threadqueue?
+    if (rdd->trans == MAP)
+    {
+      result = count(rdd);
+    }
+  }
+  else
+  {
+    printf("RDD has dependencies, executing them first.\n");
+    for (int i = 0; i < rdd->numdependencies; i++)
+    {
+      execute(rdd->dependencies[i]);
+    }
+  }
   printf("executing rdd %p\n", rdd);
   printf("result is %d\n", result);
   return;
@@ -203,10 +219,11 @@ int count(RDD *rdd)
   execute(rdd);
 
   int count = 0;
-  // count all the items in rdd
-  for (int i = 0; i < rdd->numpartitions; i++)
+  Node *current = rdd->partitions->head;
+  while (current)
   {
-    count += rdd->partitions[i].size;
+    count++;
+    current = current->next;
   }
   return count;
 }
@@ -220,11 +237,9 @@ void print(RDD *rdd, Printer p)
   for (int i = 0; i < rdd->numpartitions; i++)
   {
     Node *current = rdd->partitions[i].head;
-    for (int j = 0; j < rdd->partitions[i].size; j++)
+    while (current != NULL)
     {
-      //?????
       p(current->data);
-
       current = current->next;
     }
   }
