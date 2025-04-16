@@ -7,6 +7,9 @@
 #include "minispark.h"
 
 #define TASK_QUEUE_BUFFER 255
+
+volatile int pool_kill = 0;
+
 ThreadPool *pool;
 // Working with metrics...
 // Recording the current time in a `struct timespec`:
@@ -39,7 +42,7 @@ RDD *create_rdd(int numdeps, Transform t, void *fn, ...)
 
   va_list args;
   va_start(args, fn);
-  
+
   int maxpartitions = 0;
   for (int i = 0; i < numdeps; i++)
   {
@@ -48,13 +51,13 @@ RDD *create_rdd(int numdeps, Transform t, void *fn, ...)
     maxpartitions = max(maxpartitions, dep->partitions->size);
   }
   va_end(args);
-  
+
   rdd->numdependencies = numdeps;
   rdd->trans = t;
   rdd->fn = fn;
   rdd->partitions = NULL;
   rdd->finisheddependencies = 0;
-  
+
   return rdd;
 }
 
@@ -117,72 +120,78 @@ RDD *RDDFromFiles(char **filenames, int numfiles)
   return rdd;
 }
 
-List* populatePartition(Task* task){
-  RDD* rdd = task->rdd;
+List *populatePartition(Task *task)
+{
+  RDD *rdd = task->rdd;
   int pnum = task->pnum;
-  List* partition;
-  Node* current;
-  switch(rdd->trans){
-    case MAP:
+  List *partition;
+  Node *current;
+  switch (rdd->trans)
+  {
+  case MAP:
 
-      Mapper mapper = (Mapper)rdd->fn;
-      partition = malloc(sizeof(List));
-      current = rdd->dependencies[0]->partitions[pnum].head;
-      while(current != NULL){
-        void* newData = current->data;
-        list_add_elem(partition, mapper(newData));
-        current = current->next;
+    Mapper mapper = (Mapper)rdd->fn;
+    partition = malloc(sizeof(List));
+    current = rdd->dependencies[0]->partitions[pnum].head;
+    while (current != NULL)
+    {
+      void *newData = current->data;
+      list_add_elem(partition, mapper(newData));
+      current = current->next;
+    }
+    rdd->partitions[pnum] = *partition;
+
+    break;
+  case FILTER:
+
+    Filter filter = (Filter)rdd->fn;
+    partition = malloc(sizeof(List));
+    current = rdd->dependencies[0]->partitions[pnum].head;
+    while (current != NULL)
+    {
+      void *newData = current->data;
+      if (filter(newData, rdd->ctx))
+      {
+        list_add_elem(partition, newData);
       }
-      rdd->partitions[pnum] = *partition;
+      current = current->next;
+    }
+    rdd->partitions[pnum] = *partition;
 
-      break;
-    case FILTER:
+    break;
+  case JOIN:
 
-      Filter filter = (Filter)rdd->fn;
-      partition = malloc(sizeof(List));
-      current = rdd->dependencies[0]->partitions[pnum].head;
-      while(current != NULL){
-        void* newData = current->data;
-        if(filter(newData, rdd->ctx)){
-          list_add_elem(partition, newData);
+    Joiner joiner = (Joiner)rdd->fn;
+    partition = malloc(sizeof(List));
+    List partition0 = rdd->dependencies[0]->partitions[pnum];
+    List partition1 = rdd->dependencies[1]->partitions[pnum];
+    Node *current0 = partition0.head;
+    while (current0 != NULL)
+    {
+      Node *current1 = partition1.head;
+      while (current1 != NULL)
+      {
+        void *join = joiner(current0->data, current1->data, rdd->ctx);
+        if (join != NULL)
+        {
+          list_add_elem(partition, join);
         }
-        current = current->next;
+        current1 = current1->next;
       }
-      rdd->partitions[pnum] = *partition;
-
-      break;
-    case JOIN:
-
-      Joiner joiner = (Joiner)rdd->fn;
-      partition = malloc(sizeof(List));
-      List partition0 = rdd->dependencies[0]->partitions[pnum];
-      List partition1 = rdd->dependencies[1]->partitions[pnum];
-      Node* current0 = partition0.head;
-      while(current0 != NULL){
-        Node* current1 = partition1.head;
-        while(current1 != NULL){
-          void* join = joiner(current0->data, current1->data, rdd->ctx);
-          if(join != NULL){
-            list_add_elem(partition, join);
-          }
-          current1 = current1->next;
-        }
-        current0 = current0->next;
-      }
-      rdd->partitions[pnum] = *partition;
-      break;
-    case PARTITIONBY:
-      printf("File Backed RDD's shouldn't be executed here!\n");
-      break;
-    case FILE_BACKED:
-      printf("File Backed RDD's shouldn't be executed here!\n");
-      exit(1);
-      break;
+      current0 = current0->next;
+    }
+    rdd->partitions[pnum] = *partition;
+    break;
+  case PARTITIONBY:
+    printf("File Backed RDD's shouldn't be executed here!\n");
+    break;
+  case FILE_BACKED:
+    printf("File Backed RDD's shouldn't be executed here!\n");
+    exit(1);
+    break;
   }
   return NULL;
 }
-
-
 
 void execute(RDD *rdd)
 {
@@ -195,14 +204,16 @@ void execute(RDD *rdd)
     printf("RDD has no dependencies, ready to execute.\n");
     // in every Transformation case, we should add all partitions to the threadqueue?
 
-    
-    //Materializes the rdd
-    if(rdd->trans == PARTITIONBY){
+    // Materializes the rdd
+    if (rdd->trans == PARTITIONBY)
+    {
       Partitioner partitioner = (Partitioner)rdd->fn;
-      List* partitions = malloc(sizeof(List)*rdd->numpartitions);
-      for(int i = 0; i < rdd->dependencies[0]->numpartitions; i++){
-        Node* current = rdd->dependencies[0]->partitions[i].head;
-        while(current != NULL){
+      List *partitions = malloc(sizeof(List) * rdd->numpartitions);
+      for (int i = 0; i < rdd->dependencies[0]->numpartitions; i++)
+      {
+        Node *current = rdd->dependencies[0]->partitions[i].head;
+        while (current != NULL)
+        {
           unsigned long hash = partitioner(current->data, rdd->numpartitions, rdd->ctx);
           list_add_elem(&(partitions[hash]), current->data);
           current = current->next;
@@ -210,12 +221,13 @@ void execute(RDD *rdd)
       }
       rdd->partitions = partitions;
     }
-    if(rdd->trans == FILE_BACKED){
+    if (rdd->trans == FILE_BACKED)
+    {
       printf("I don't think we're supposed to execute File Backed rdd's\n");
       return;
     }
-    
-    //We don't want to edit numdependencies so I made a new variable to tracked finished ones
+
+    // We don't want to edit numdependencies so I made a new variable to tracked finished ones
     rdd->backlink->finisheddependencies++;
   }
   else
@@ -293,7 +305,7 @@ void *list_pop(List *list)
 
 void *consumer()
 {
-  while (1)
+  while (!pool_kill)
   {
     // get next task from queue (should this be an array?)
     pthread_mutex_lock(&pool->taskqueue->queue_mutex);
@@ -303,12 +315,12 @@ void *consumer()
       pthread_cond_wait(&pool->taskqueue->fill, &pool->taskqueue->queue_mutex);
     }
     // task found
-    Task* task = &pool->taskqueue->tasks[pool->taskqueue->rear];
+    Task task = pool->taskqueue->tasks[pool->taskqueue->rear];
     // shorted taskqueue
     pool->taskqueue->rear = (pool->taskqueue->rear + 1) % pool->taskqueue->capacity;
     pool->taskqueue->size--;
     // execute task
-    populatePartition(task);
+    populatePartition(&task);
     // signal empty condition variable
     pthread_cond_signal(&pool->taskqueue->empty);
     pthread_mutex_unlock(&pool->taskqueue->queue_mutex);
@@ -382,7 +394,7 @@ void MS_Run()
 
   // Task *task = malloc(sizeof(Task));
 
-  if(sched_getaffinity(0, sizeof(set), &set) == -1)
+  if (sched_getaffinity(0, sizeof(set), &set) == -1)
   {
     perror("sched_getaffinity");
     exit(1);
@@ -392,13 +404,14 @@ void MS_Run()
 
   // create threadpool
   pool = malloc(sizeof(ThreadPool));
-  if(pool == NULL)
+  if (pool == NULL)
   {
     printf("error mallocing threadpool\n");
     exit(1);
   }
   // initialize num threads
-  pool->numthreads = CPU_COUNT(&set);;
+  pool->numthreads = CPU_COUNT(&set);
+  ;
   // initialize threadpool
   pool->threads = malloc(sizeof(pthread_t) * pool->numthreads);
   if (pool->threads == NULL)
@@ -448,7 +461,9 @@ void MS_TearDown()
 {
 
   // wait for threads to finish
-  
+  pool_kill = 1;
+  pthread_cond_broadcast(&pool->taskqueue->fill);
+
   for (int i = 0; i < pool->numthreads; i++)
   {
     if (pthread_join(pool->threads[i], NULL) != 0)
@@ -457,7 +472,6 @@ void MS_TearDown()
       exit(1);
     }
   }
-  
 
   // wait for monitor thread to finish
   /*
@@ -472,6 +486,10 @@ void MS_TearDown()
   free(pool->threads);
   free(pool->taskqueue->tasks);
   free(pool->taskqueue);
+  pthread_mutex_destroy(&pool->taskqueue->queue_mutex);
+  pthread_mutex_destroy(&pool->pool_mutex);
+  pthread_cond_destroy(&pool->taskqueue->fill);
+  pthread_cond_destroy(&pool->taskqueue->empty);
   free(pool);
 
   return;
