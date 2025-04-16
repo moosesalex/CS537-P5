@@ -1,6 +1,0 @@
-RDD has dependencies, executing them first.
-RDD has no dependencies, ready to execute.
-Done materializing rdd 0x55ee7d5799b0
-RDD has no dependencies, ready to execute.
-Done materializing rdd 0x55ee7d57a080
-error joining thread

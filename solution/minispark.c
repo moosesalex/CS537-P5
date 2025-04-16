@@ -160,10 +160,13 @@ RDD *RDDFromFiles(char **filenames, int numfiles)
 List *populatePartition(Task *task)
 {
   //printf("WTF\n");
-  RDD *rdd = task->rdd;
+  if(task == NULL){
+    printf("WTF\n");
+  }
   int pnum = task->pnum;
   List *partition = list_init();
   Node *current;
+  RDD *rdd = task->rdd;
   //printf("HUH\n");
   switch (rdd->trans)
   {
