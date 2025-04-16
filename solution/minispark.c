@@ -117,36 +117,65 @@ RDD *RDDFromFiles(char **filenames, int numfiles)
   return rdd;
 }
 
-int movePartition(List* partition, RDD* rdd){
-  Mapper function = (Mapper)rdd->fn;
-  rdd->partitions = rdd->dependencies[0]->partitions;
-  for(int i; i < rdd->numpartitions; i++){
-    Node* current = rdd->partitions[i].head;
-    while(current != NULL){
-      void* newData = current->data;
-      newData = function(newData);
-    }
-  }
-}
-int filterPartition(List* partition, RDD* rdd){
-  Filter function = (Filter)rdd->fn;
-  rdd->partitions = list_init(rdd->numpartitions);
-  for(int i; i < rdd->dependencies[0]->numpartitions; i++){
-    Node* current = rdd->dependencies[0]->partitions[i].head;
-    while(current != NULL){
-      void* newData = current->data;
-      if(function(newData)){
-        list_add_elem((rdd->partitions)+i, newData);
-      }
-    }
-  }
-}
-int joinPartition(List* partition, RDD* rdd){
-  
-}
-int partitionByPartition(List* partition, RDD* rdd){
+List* populatePartition(Task* task){
+  RDD* rdd = task->rdd;
+  int pnum = task->pnum;
+  switch(rdd->trans){
+    case MAP:
 
+      Mapper mapper = (Mapper)rdd->fn;
+      List* partition = malloc(sizeof(List));
+      Node* current = rdd->dependencies[0]->partitions[pnum].head;
+      while(current != NULL){
+        void* newData = current->data;
+        list_add_elem(partition, mapper(newData));
+      }
+      rdd->partitions[pnum] = *partition;
+
+      break;
+    case FILTER:
+
+      Filter filter = (Filter)rdd->fn;
+      List* partition = malloc(sizeof(List));
+      Node* current = rdd->dependencies[0]->partitions[pnum].head;
+      while(current != NULL){
+        void* newData = current->data;
+        if(filter(newData, rdd->ctx)){
+          list_add_elem(partition, newData);
+        }
+      }
+      rdd->partitions[pnum] = *partition;
+
+      break;
+    case JOIN:
+
+      Joiner joiner = (Joiner)rdd->fn;
+      List* partition = malloc(sizeof(List));
+      List partition0 = rdd->dependencies[0]->partitions[pnum];
+      List partition1 = rdd->dependencies[1]->partitions[pnum];
+      Node* current0 = partition0.head;
+      while(current0 != NULL){
+        Node* current1 = partition1.head;
+        while(current1 != NULL){
+          void* join = joiner(current0->data, current1->data, rdd->ctx);
+          if(join != NULL){
+            list_add_elem(partition, join);
+          }
+        }
+      }
+      rdd->partitions[pnum] = *partition;
+      break;
+    case PARTITIONBY:
+      printf("File Backed RDD's shouldn't be executed here!\n");
+      break;
+    case FILE_BACKED:
+      printf("File Backed RDD's shouldn't be executed here!\n");
+      exit(1);
+      break;
+  }
 }
+
+
 
 void execute(RDD *rdd)
 {
