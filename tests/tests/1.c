@@ -13,7 +13,6 @@ int main(int argc, char* argv[]) {
   RDD* files = RDDFromFiles(argv + 1, argc - 1);
   print(map(files, GetLines), StringPrinter);
 
-  printf("Done mapping and printing!\n");
   MS_TearDown();
 
 
