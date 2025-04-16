@@ -291,7 +291,7 @@ void *list_pop(List *list)
   return data;
 }
 
-void *consumer(void *arg)
+void *consumer()
 {
   while (1)
   {
@@ -303,12 +303,12 @@ void *consumer(void *arg)
       pthread_cond_wait(&pool->taskqueue->fill, &pool->taskqueue->queue_mutex);
     }
     // task found
-    Task* task = &pool->taskqueue[pool->taskqueue->rear];
+    Task* task = &pool->taskqueue->tasks[pool->taskqueue->rear];
     // shorted taskqueue
     pool->taskqueue->rear = (pool->taskqueue->rear + 1) % pool->taskqueue->capacity;
     pool->taskqueue->size--;
     // execute task
-    populate_partition(&task);
+    populatePartition(task);
     // signal empty condition variable
     pthread_cond_signal(&pool->taskqueue->empty);
     pthread_mutex_unlock(&pool->taskqueue->queue_mutex);
@@ -351,10 +351,10 @@ TaskQueue *task_queue_init()
   return taskqueue;
 }
 
-task_queue_add(Task *task)
+void task_queue_add(Task *task)
 {
   pthread_mutex_lock(&pool->taskqueue->queue_mutex);
-  while (&pool->taskqueue->size == pool->taskqueue->capacity)
+  while (pool->taskqueue->size == pool->taskqueue->capacity)
   {
     // wait for a task to be removed from the queue
     pthread_cond_wait(&pool->taskqueue->empty, &pool->taskqueue->queue_mutex);
@@ -419,7 +419,7 @@ void MS_Run()
   for (int i = 0; i < pool->numthreads; i++)
   {
     // create thread
-    if (pthread_create(&pool->threads[i], NULL, &consumer, pool) != 0)
+    if (pthread_create(&pool->threads[i], NULL, &consumer, NULL) != 0)
     {
       printf("error creating thread\n");
       exit(1);
