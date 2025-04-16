@@ -117,6 +117,10 @@ RDD *RDDFromFiles(char **filenames, int numfiles)
   return rdd;
 }
 
+int movePartition(List* partition, RDD* rdd){
+  return -1;
+}
+
 void execute(RDD *rdd)
 {
   // TODO: this should check to make sure RDD has 0 dependencies
@@ -128,16 +132,11 @@ void execute(RDD *rdd)
     printf("RDD has no dependencies, ready to execute.\n");
     // in every Transformation case, we should add all partitions to the threadqueue?
 
-    //What is this for?
-    //if (rdd->trans == MAP)
-    //{
-    //  result = count(rdd);
-    //}
-    //Get the function that the rdd wants to execute
-    void* (*function)(void*) = (void* (*)(void*))rdd->fn;
+    
     //Materializes the rdd
     switch(rdd->trans){
       case MAP:
+        Mapper function = (Mapper)rdd->fn;
         rdd->partitions = rdd->dependencies[0]->partitions;
         for(int i; i < rdd->numpartitions; i++){
           Node* current = rdd->partitions[i].head;
@@ -148,10 +147,20 @@ void execute(RDD *rdd)
         }
         break;
       case FILTER:
-
+        Filter function = (Filter)rdd->fn;
+        rdd->partitions = list_init(rdd->numpartitions);
+        for(int i; i < rdd->dependencies[0]->numpartitions; i++){
+          Node* current = rdd->dependencies[0]->partitions[i].head;
+          while(current != NULL){
+            void* newData = current->data;
+            if(function(newData)){
+              list_add_elem((rdd->partitions)+i, newData);
+            }
+          }
+        }
         break;
       case JOIN:
-
+        
         break;
       case PARTITIONBY:
 
