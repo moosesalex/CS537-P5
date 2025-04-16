@@ -1,9 +1,0 @@
-Added 0x55c7de0b2a80 to list
-Added 0x55c7de0b3c90 to list
-Added 0x55c7de0b3e90 to list
-RDD has dependencies, executing them first.
-RDD has no dependencies, ready to execute.
-Done materializing rdd 0x55c7de0b29b0
-RDD has no dependencies, ready to execute.
-Done materializing rdd 0x55c7de0b4090
-error joining thread
