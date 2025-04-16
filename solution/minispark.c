@@ -244,6 +244,11 @@ List *populatePartition(Task *task)
 
 void execute(RDD *rdd)
 {
+  if (!rdd) {
+    printf("[ERROR] Null RDD pointer passed to execute()\n");
+    exit(1);
+  }
+  printf("[EXECUTE] Executing RDD %p | trans = %d | numdeps = %d\n", rdd, rdd->trans, rdd->numdependencies);
   // TODO: this should check to make sure RDD has 0 dependencies
   // if it does, we can execute it
   // add partitions to threadpool taskqueue for parallelism
@@ -297,8 +302,7 @@ void execute(RDD *rdd)
     
   }
   else if(rdd->trans != FILE_BACKED && rdd->trans != PARTITIONBY){
-    // check previous rdd, if it is file backed, we need to read from the file
-
+    
     for(int i = 0; i < rdd->numpartitions; i++){
       Task* task = malloc(sizeof(Task));
       task->rdd = rdd;
@@ -314,7 +318,6 @@ void execute(RDD *rdd)
       task->metric = metric;
       task_queue_add(task);
     }
-    
     // what is this for?
     /*
     while(pool->taskqueue->size >0){
@@ -589,7 +592,8 @@ void MS_TearDown()
 
   if (pool && pool->threads) {
       for (int i = 0; i < pool->numthreads; i++) {
-            if (pthread_tryjoin_np(pool->threads[i], NULL) != 0) {
+          //pthread_cancel(pool->threads[i]);
+          if (pthread_join(pool->threads[i], NULL) != 0) {
               printf("error joining thread\n");
               exit(1);
           }
