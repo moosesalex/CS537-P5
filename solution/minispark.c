@@ -445,8 +445,7 @@ void *consumer()
     populatePartition(task);
 
     pthread_mutex_lock(&pool->pool_mutex);
-    free(task->metric);
-    free(task);
+    free_task(task);
     
     // decrement running tasks
     pool->runningtasks--;
