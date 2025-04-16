@@ -236,6 +236,7 @@ List *populatePartition(Task *task)
   return NULL;
 }
 void free_task(Task* task){
+
   free(task->metric);
   free(task);
 }
@@ -256,15 +257,7 @@ void free_rdd(RDD* rdd){
     List* partition = rdd->partitions[i];
     free_list(partition);
   }
-  /*
-  if(rdd->tasks != NULL){
-    for(int i = 0; i < rdd->numpartitions; i++){
-      Task* task = rdd->tasks[i];
-      free_task(task);
-    }
-    free(rdd->tasks);
-  }
-  */
+  free(rdd->partitions);
   free(rdd);
   return;
 }
