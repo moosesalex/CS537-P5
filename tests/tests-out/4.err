@@ -1,38 +1,38 @@
 
 =================================================================
-==3246257==ERROR: LeakSanitizer: detected memory leaks
+==3257494==ERROR: LeakSanitizer: detected memory leaks
 
 Direct leak of 144 byte(s) in 6 object(s) allocated from:
-    #0 0x7f6c64dac887 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:145
-    #1 0x55965cd7cf0c in list_init solution/minispark.c:360
+    #0 0x7f7d14a37887 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:145
+    #1 0x55e6ac255f0c in list_init solution/minispark.c:360
 
 Direct leak of 72 byte(s) in 3 object(s) allocated from:
-    #0 0x7f6c64dac887 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:145
-    #1 0x55965cd7da40 in execute solution/minispark.c:327
+    #0 0x7f7d14a37887 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:145
+    #1 0x55e6ac256a40 in execute solution/minispark.c:327
 
 Direct leak of 48 byte(s) in 2 object(s) allocated from:
-    #0 0x7f6c64dac887 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:145
-    #1 0x55965cd7cf5a in partitions_init solution/minispark.c:66
+    #0 0x7f7d14a37887 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:145
+    #1 0x55e6ac255f5a in partitions_init solution/minispark.c:66
 
 Direct leak of 24 byte(s) in 1 object(s) allocated from:
-    #0 0x7f6c64dac887 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:145
-    #1 0x55965cd7d14c in RDDFromFiles solution/minispark.c:138
-    #2 0x7ffebdb86870  ([stack]+0x20870)
+    #0 0x7f7d14a37887 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:145
+    #1 0x55e6ac25614c in RDDFromFiles solution/minispark.c:138
+    #2 0x7ffcd2d12870  ([stack]+0x20870)
 
 Indirect leak of 600 byte(s) in 5 object(s) allocated from:
-    #0 0x7f6c64dac887 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:145
-    #1 0x7f6c64b4f122 in __GI___getdelim libio/iogetdelim.c:62
+    #0 0x7f7d14a37887 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:145
+    #1 0x7f7d147da122 in __GI___getdelim libio/iogetdelim.c:62
 
 Indirect leak of 168 byte(s) in 3 object(s) allocated from:
-    #0 0x7f6c64dac887 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:145
-    #1 0x55965cd7da54 in execute solution/minispark.c:330
+    #0 0x7f7d14a37887 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:145
+    #1 0x55e6ac256a54 in execute solution/minispark.c:330
 
 Indirect leak of 80 byte(s) in 5 object(s) allocated from:
-    #0 0x7f6c64dac887 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:145
-    #1 0x55965cd7d0d0 in list_add_elem solution/minispark.c:375
+    #0 0x7f7d14a37887 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:145
+    #1 0x55e6ac2560d0 in list_add_elem solution/minispark.c:375
 
 Indirect leak of 72 byte(s) in 3 object(s) allocated from:
-    #0 0x7f6c64dac887 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:145
-    #1 0x55965cd7cf0c in list_init solution/minispark.c:360
+    #0 0x7f7d14a37887 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:145
+    #1 0x55e6ac255f0c in list_init solution/minispark.c:360
 
 SUMMARY: AddressSanitizer: 1208 byte(s) leaked in 28 allocation(s).
