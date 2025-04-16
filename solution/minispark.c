@@ -135,10 +135,7 @@ RDD *RDDFromFiles(char **filenames, int numfiles)
 {
   RDD *rdd = malloc(sizeof(RDD));
   rdd->partitions = malloc(sizeof(List *) * numfiles);
-  for (int i = 0; i < numfiles; i++)
-  {
-    rdd->partitions[i] = list_init();
-  }
+  rdd->partitions = list_init();
 
 
   for (int i = 0; i < numfiles; i++)
@@ -149,7 +146,7 @@ RDD *RDDFromFiles(char **filenames, int numfiles)
       perror("fopen");
       exit(1);
     }
-    list_add_elem(rdd->partitions[i], fp);
+    list_add_elem(rdd->partitions, fp);
   }
 
   rdd->numpartitions = 1;
