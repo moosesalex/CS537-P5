@@ -439,6 +439,11 @@ void MS_Run()
   return;
 }
 
+int getNumThreads()
+{
+  return pool->numthreads;
+}
+
 void MS_TearDown()
 {
 
@@ -468,7 +473,7 @@ void MS_TearDown()
   free(pool->taskqueue->tasks);
   free(pool->taskqueue);
   free(pool);
-  
+
   return;
 }
 
