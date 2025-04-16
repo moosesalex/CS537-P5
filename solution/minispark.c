@@ -638,7 +638,7 @@ void MS_TearDown()
   // free taskqueue
   if (pool && pool->taskqueue) {
     if (pool->taskqueue->tasks) {
-        free(pool->taskqueue->tasks);
+      free(pool->taskqueue->tasks);
     }
 
     pthread_mutex_destroy(&pool->taskqueue->queue_mutex);
@@ -700,3 +700,4 @@ void print(RDD *rdd, Printer p)
   free(rdd);
   return;
 }
+
