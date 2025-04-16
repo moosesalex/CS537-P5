@@ -7,7 +7,7 @@
 #include "minispark.h"
 
 #define TASK_QUEUE_BUFFER 255
-
+ThreadPool *pool;
 // Working with metrics...
 // Recording the current time in a `struct timespec`:
 //    clock_gettime(CLOCK_MONOTONIC, &metric->created);
@@ -118,7 +118,34 @@ RDD *RDDFromFiles(char **filenames, int numfiles)
 }
 
 int movePartition(List* partition, RDD* rdd){
-  return -1;
+  Mapper function = (Mapper)rdd->fn;
+  rdd->partitions = rdd->dependencies[0]->partitions;
+  for(int i; i < rdd->numpartitions; i++){
+    Node* current = rdd->partitions[i].head;
+    while(current != NULL){
+      void* newData = current->data;
+      newData = function(newData);
+    }
+  }
+}
+int filterPartition(List* partition, RDD* rdd){
+  Filter function = (Filter)rdd->fn;
+  rdd->partitions = list_init(rdd->numpartitions);
+  for(int i; i < rdd->dependencies[0]->numpartitions; i++){
+    Node* current = rdd->dependencies[0]->partitions[i].head;
+    while(current != NULL){
+      void* newData = current->data;
+      if(function(newData)){
+        list_add_elem((rdd->partitions)+i, newData);
+      }
+    }
+  }
+}
+int joinPartition(List* partition, RDD* rdd){
+  
+}
+int partitionByPartition(List* partition, RDD* rdd){
+
 }
 
 void execute(RDD *rdd)
@@ -136,28 +163,10 @@ void execute(RDD *rdd)
     //Materializes the rdd
     switch(rdd->trans){
       case MAP:
-        Mapper function = (Mapper)rdd->fn;
-        rdd->partitions = rdd->dependencies[0]->partitions;
-        for(int i; i < rdd->numpartitions; i++){
-          Node* current = rdd->partitions[i].head;
-          while(current != NULL){
-            void* newData = current->data;
-            newData = function(newData);
-          }
-        }
+        
         break;
       case FILTER:
-        Filter function = (Filter)rdd->fn;
-        rdd->partitions = list_init(rdd->numpartitions);
-        for(int i; i < rdd->dependencies[0]->numpartitions; i++){
-          Node* current = rdd->dependencies[0]->partitions[i].head;
-          while(current != NULL){
-            void* newData = current->data;
-            if(function(newData)){
-              list_add_elem((rdd->partitions)+i, newData);
-            }
-          }
-        }
+        
         break;
       case JOIN:
 
