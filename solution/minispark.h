@@ -99,7 +99,7 @@ struct RDD
   int finisheddependencies;
   int numpartitions;
   // you may want extra data members here
-  Task** tasks;
+  //Task** tasks;
 };
 
 //////// actions ////////
