@@ -198,7 +198,7 @@ void execute(RDD *rdd)
         
         break;
       case JOIN:
-        
+
         break;
       case PARTITIONBY:
 
@@ -277,6 +277,7 @@ void *list_pop(List *list)
   Node *node = list->head;
   list->head = node->next;
   void *data = node->data;
+  list->size--;
   free(node);
   return data;
 }
@@ -288,30 +289,31 @@ void *list_pop(List *list)
 // starts a thread
 void *start_thread(void *arg)
 {
+
 }
 
 void *consumer(void *arg)
 {
-  TaskQueue *queue = (TaskQueue *)arg;
   while (1)
   {
     // get next task from queue (should this be an array?)
-    pthread_mutex_lock(&queue->queue_mutex);
-    while (queue->size == 0)
+    pthread_mutex_lock(&pool->taskqueue->queue_mutex);
+    while (pool->taskqueue->size == 0)
     {
       // wait for a task to be added to the queue
-      pthread_cond_wait(&queue->fill, &queue->queue_mutex);
+      pthread_cond_wait(&pool->taskqueue->fill, &pool->taskqueue->queue_mutex);
     }
+    // task found
+    Task* task = &pool->taskqueue[pool->taskqueue->rear];
+    // shorted taskqueue
+    pool->taskqueue->rear = (pool->taskqueue->rear + 1) % pool->taskqueue->capacity;
+    pool->taskqueue->size--;
+    // execute task
+    populate_partition(&task);
+    // signal empty condition variable
+    pthread_cond_signal(&pool->taskqueue->empty);
+    pthread_mutex_unlock(&pool->taskqueue->queue_mutex);
   }
-  int tmp = start_thread(&queue->rear); // what is do_get?
-  // signal empty condition variable
-  pthread_cond_signal(&queue->empty);
-  pthread_mutex_unlock(&queue->queue_mutex);
-  // execute task
-  // free task
-  // add metrics to log
-  // if task is done, remove it from the queue
-  // if task is not done, add it back to the queue
 }
 
 TaskQueue *task_queue_init()
@@ -350,49 +352,26 @@ TaskQueue *task_queue_init()
   return taskqueue;
 }
 
-task_queue_add(TaskQueue *queue, Task *task)
+task_queue_add(Task *task)
 {
-  for (int i = 0; i < task->rdd->numpartitions; i++)
+  pthread_mutex_lock(&pool->taskqueue->queue_mutex);
+  while (&pool->taskqueue->size == pool->taskqueue->capacity)
   {
-    pthread_mutex_lock(&queue->queue_mutex);
-    while (queue->size == queue->capacity)
-    {
-      // wait for a task to be removed from the queue
-      pthread_cond_wait(&queue->empty, &queue->queue_mutex);
-    }
-    // check if queue is full
-    if (queue->size == queue->capacity)
-    {
-      printf("error adding task to queue, queue is full\n");
-      exit(1);
-    }
-    // add task to queue
-    queue->tasks[queue->front] = task->rdd->partitions->head->data;
-    queue->rear = (queue->rear + 1) % queue->capacity;
-    queue->size++;
-    pthread_cond_signal(&queue->fill);
-    pthread_mutex_unlock(&queue->queue_mutex);
+    // wait for a task to be removed from the queue
+    pthread_cond_wait(&pool->taskqueue->empty, &pool->taskqueue->queue_mutex);
   }
-
-  pthread_cond_signal(&queue->fill);
-  pthread_mutex_unlock(&queue->queue_mutex);
-}
-
-task_queue_remove(TaskQueue *queue, Task *task)
-{
-  pthread_mutex_lock(&queue->queue_mutex);
-  // check if queue is empty
-  if (queue->size == 0)
+  // check if queue is full
+  if (pool->taskqueue->size == pool->taskqueue->capacity)
   {
-    printf("error removing task from queue, queue is empty\n");
+    printf("error adding task to queue, queue is full\n");
     exit(1);
   }
-  // remove task from queue
-  *task = queue->tasks[queue->front];
-  queue->front = (queue->front + 1) % queue->capacity;
-  queue->size--;
-  pthread_cond_signal(&queue->empty);
-  pthread_mutex_unlock(&queue->queue_mutex);
+  // add task to queue
+  pool->taskqueue->tasks[pool->taskqueue->front] = *task;
+  pool->taskqueue->front = (pool->taskqueue->front + 1) % pool->taskqueue->capacity;
+  pool->taskqueue->size++;
+  pthread_cond_signal(&pool->taskqueue->fill);
+  pthread_mutex_unlock(&pool->taskqueue->queue_mutex);
 }
 
 void MS_Run()
@@ -437,11 +416,11 @@ void MS_Run()
     exit(1);
   }
 
-  // create threads
+  // create consumer threads
   for (int i = 0; i < THREAD_NUMBERS; i++)
   {
     // create thread
-    if (pthread_create(&pool->threads[i], NULL, &start_thread, pool) != 0)
+    if (pthread_create(&pool->threads[i], NULL, &consumer, pool) != 0)
     {
       printf("error creating thread\n");
       exit(1);
