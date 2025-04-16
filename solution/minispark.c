@@ -282,7 +282,7 @@ void execute(RDD *rdd)
     Mapper mapper = (Mapper)rdd->fn;
     for(int i = 0; i < rdd->dependencies[0]->numpartitions; i++){
       Node* current = rdd->dependencies[0]->partitions[i]->head;
-      List* partition;
+      List* partition = list_init();
       while (current != NULL)
       {
         void* newData;
