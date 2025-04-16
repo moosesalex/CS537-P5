@@ -155,7 +155,7 @@ RDD *RDDFromFiles(char **filenames, int numfiles)
       perror("fopen");
       exit(1);
     }
-    list_add_elem(rdd->partitions, fp);
+    list_add_elem(rdd->partitions[i], fp);
   }
 
   rdd->numpartitions = numfiles;
@@ -282,6 +282,24 @@ void execute(RDD *rdd)
       }
     }
     rdd->partitions = partitions;
+  }
+  else if(rdd->trans == MAP && rdd->dependencies[0]->trans == FILE_BACKED){
+    Mapper mapper = (Mapper)rdd->fn;
+    for(int i = 0; i < rdd->dependencies[0]->numpartitions; i++){
+      Node* current = rdd->dependencies[0]->partitions[i]->head;
+      List* partition;
+      while (current != NULL)
+      {
+        void* newData;
+        while(newData = mapper(current->data) != NULL){
+          list_add_elem(partition, newData);
+        }
+        current = current->next;
+        //printf("Test\n");
+      }
+      rdd->partitions[i] = partition;
+    }
+    
   }
   else if(rdd->trans != FILE_BACKED && rdd->trans != PARTITIONBY){
     
