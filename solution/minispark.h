@@ -9,6 +9,8 @@
 
 typedef struct RDD RDD;
 
+
+
 struct Node
 {
   void *data;
@@ -152,5 +154,7 @@ void MS_Run();
 // Waits for work to be complete, destroys the thread pool, and frees
 // all RDDs allocated during runtime.
 void MS_TearDown();
+
+int task_queue_add(Task* task);
 
 #endif // __minispark_h__;

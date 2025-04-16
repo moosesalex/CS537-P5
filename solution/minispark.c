@@ -64,13 +64,16 @@ RDD *create_rdd(int numdeps, Transform t, void *fn, ...)
 /* RDD constructors */
 RDD *map(RDD *dep, Mapper fn)
 {
-  return create_rdd(1, MAP, fn, dep);
+  RDD* rdd = create_rdd(1, MAP, fn, dep);
+  rdd->numpartitions = dep->numpartitions;
+  return rdd;
 }
 
 RDD *filter(RDD *dep, Filter fn, void *ctx)
 {
   RDD *rdd = create_rdd(1, FILTER, fn, dep);
   rdd->ctx = ctx;
+  rdd->numpartitions = dep->numpartitions;
   return rdd;
 }
 
@@ -87,6 +90,7 @@ RDD *join(RDD *dep1, RDD *dep2, Joiner fn, void *ctx)
 {
   RDD *rdd = create_rdd(2, JOIN, fn, dep1, dep2);
   rdd->ctx = ctx;
+  rdd->numpartitions = max(dep1->numpartitions, dep2->numpartitions);
   return rdd;
 }
 
@@ -114,8 +118,9 @@ RDD *RDDFromFiles(char **filenames, int numfiles)
     list_add_elem(rdd->partitions, fp);
   }
 
+  rdd->numpartitions = 1;
   rdd->numdependencies = 0;
-  rdd->trans = MAP;
+  rdd->trans = FILE_BACKED;
   rdd->fn = (void *)identity;
   
   return rdd;
@@ -123,22 +128,24 @@ RDD *RDDFromFiles(char **filenames, int numfiles)
 
 List *populatePartition(Task *task)
 {
+  printf("WTF\n");
   RDD *rdd = task->rdd;
   int pnum = task->pnum;
-  List *partition;
+  List partition[MAXDEPS];
   Node *current;
+  printf("HUH\n");
   switch (rdd->trans)
   {
   case MAP:
 
     Mapper mapper = (Mapper)rdd->fn;
-    partition = malloc(sizeof(List));
     current = rdd->dependencies[0]->partitions[pnum].head;
     while (current != NULL)
     {
       void *newData = current->data;
       list_add_elem(partition, mapper(newData));
       current = current->next;
+      printf("Test\n");
     }
     rdd->partitions[pnum] = *partition;
 
@@ -146,7 +153,6 @@ List *populatePartition(Task *task)
   case FILTER:
 
     Filter filter = (Filter)rdd->fn;
-    partition = malloc(sizeof(List));
     current = rdd->dependencies[0]->partitions[pnum].head;
     while (current != NULL)
     {
@@ -163,7 +169,6 @@ List *populatePartition(Task *task)
   case JOIN:
 
     Joiner joiner = (Joiner)rdd->fn;
-    partition = malloc(sizeof(List));
     List partition0 = rdd->dependencies[0]->partitions[pnum];
     List partition1 = rdd->dependencies[1]->partitions[pnum];
     Node *current0 = partition0.head;
@@ -184,7 +189,7 @@ List *populatePartition(Task *task)
     rdd->partitions[pnum] = *partition;
     break;
   case PARTITIONBY:
-    printf("File Backed RDD's shouldn't be executed here!\n");
+    printf("Partition By RDD's shouldn't be executed here!\n");
     break;
   case FILE_BACKED:
     printf("File Backed RDD's shouldn't be executed here!\n");
@@ -227,10 +232,7 @@ void execute(RDD *rdd)
     }
     rdd->partitions = partitions;
   }
-  else if(rdd->trans == FILE_BACKED){
-    printf("I don't think we're supposed to materialize File Backed rdd's\n");
-  }
-  else{
+  else if(rdd->trans != FILE_BACKED && rdd->trans != PARTITIONBY){
     for(int i = 0; i < rdd->numpartitions; i++){
       Task* task = malloc(sizeof(Task));
       task->rdd = rdd;
@@ -339,6 +341,7 @@ void *consumer()
     pthread_cond_signal(&pool->taskqueue->empty);
     pthread_mutex_unlock(&pool->taskqueue->queue_mutex);
   }
+  pthread_exit(0);
 }
 
 TaskQueue *task_queue_init()
@@ -377,7 +380,7 @@ TaskQueue *task_queue_init()
   return taskqueue;
 }
 
-void task_queue_add(Task* task)
+int task_queue_add(Task* task)
 {
   pthread_mutex_lock(&pool->taskqueue->queue_mutex);
   while (pool->taskqueue->size == pool->taskqueue->capacity)
@@ -397,7 +400,7 @@ void task_queue_add(Task* task)
   pool->taskqueue->size++;
   pthread_cond_signal(&pool->taskqueue->fill);
   pthread_mutex_unlock(&pool->taskqueue->queue_mutex);
-  return;
+  return 0;
 }
 
 void MS_Run()
@@ -466,10 +469,10 @@ void MS_Run()
   return;
 }
 
-//int getNumThreads()
-//{
-//  return pool->numthreads;
-//}
+int getNumThreads()
+{
+  return pool->numthreads;
+}
 
 void MS_TearDown()
 {
@@ -480,7 +483,8 @@ void MS_TearDown()
 
   for (int i = 0; i < pool->numthreads; i++)
   {
-    if (pthread_join(pool->threads[i], NULL) != 0)
+    void** tr = malloc(sizeof(void*));
+    if (pthread_tryjoin_np(pool->threads[i], tr) != 1)
     {
       printf("error joining thread\n");
       exit(1);
