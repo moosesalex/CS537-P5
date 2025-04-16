@@ -259,7 +259,7 @@ void *consumer(void *arg)
   {
     // get next task from queue (should this be an array?)
     pthread_mutex_lock(&queue->queue_mutex);
-    while (queue->tasks == 0)
+    while (queue->size == 0)
     {
       // wait for a task to be added to the queue
       pthread_cond_wait(&queue->fill, &queue->queue_mutex);
@@ -275,7 +275,6 @@ void *consumer(void *arg)
   // if task is done, remove it from the queue
   // if task is not done, add it back to the queue
 }
-
 
 TaskQueue *task_queue_init()
 {
@@ -311,6 +310,51 @@ TaskQueue *task_queue_init()
     exit(1);
   }
   return taskqueue;
+}
+
+task_queue_add(TaskQueue *queue, Task *task)
+{
+  for (int i = 0; i < task->rdd->numpartitions; i++)
+  {
+    pthread_mutex_lock(&queue->queue_mutex);
+    while (queue->size == queue->capacity)
+    {
+      // wait for a task to be removed from the queue
+      pthread_cond_wait(&queue->empty, &queue->queue_mutex);
+    }
+    // check if queue is full
+    if (queue->size == queue->capacity)
+    {
+      printf("error adding task to queue, queue is full\n");
+      exit(1);
+    }
+    // add task to queue
+    queue->tasks[queue->front] = task->rdd->partitions->head->data;
+    queue->rear = (queue->rear + 1) % queue->capacity;
+    queue->size++;
+    pthread_cond_signal(&queue->fill);
+    pthread_mutex_unlock(&queue->queue_mutex);
+  }
+
+  pthread_cond_signal(&queue->fill);
+  pthread_mutex_unlock(&queue->queue_mutex);
+}
+
+task_queue_remove(TaskQueue *queue, Task *task)
+{
+  pthread_mutex_lock(&queue->queue_mutex);
+  // check if queue is empty
+  if (queue->size == 0)
+  {
+    printf("error removing task from queue, queue is empty\n");
+    exit(1);
+  }
+  // remove task from queue
+  *task = queue->tasks[queue->front];
+  queue->front = (queue->front + 1) % queue->capacity;
+  queue->size--;
+  pthread_cond_signal(&queue->empty);
+  pthread_mutex_unlock(&queue->queue_mutex);
 }
 
 void MS_Run()
