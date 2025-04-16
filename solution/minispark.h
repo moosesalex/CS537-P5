@@ -20,7 +20,6 @@ struct List
   struct Node *head;
   struct Node *tail;
   int size;
-  int hash;
 };
 
 typedef struct
