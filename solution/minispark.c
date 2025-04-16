@@ -160,7 +160,7 @@ void execute(RDD *rdd)
         }
         break;
       case JOIN:
-        
+
         break;
       case PARTITIONBY:
 
@@ -239,6 +239,7 @@ void *list_pop(List *list)
   Node *node = list->head;
   list->head = node->next;
   void *data = node->data;
+  list->size--;
   free(node);
   return data;
 }
@@ -329,15 +330,12 @@ task_queue_add(TaskQueue *queue, Task *task)
       exit(1);
     }
     // add task to queue
-    queue->tasks[queue->front] = task->rdd->partitions->head->data;
+    queue->tasks[queue->front] = *(Task *)list_pop(task->rdd->partitions);
     queue->rear = (queue->rear + 1) % queue->capacity;
     queue->size++;
     pthread_cond_signal(&queue->fill);
     pthread_mutex_unlock(&queue->queue_mutex);
   }
-
-  pthread_cond_signal(&queue->fill);
-  pthread_mutex_unlock(&queue->queue_mutex);
 }
 
 task_queue_remove(TaskQueue *queue, Task *task)
