@@ -134,9 +134,9 @@ void *identity(void *arg)
 RDD *RDDFromFiles(char **filenames, int numfiles)
 {
   RDD *rdd = malloc(sizeof(RDD));
-  rdd->partitions = malloc(sizeof(List *) * numfiles);
-  for (int i = 0; i < numfiles; i++)
-  {
+  rdd->partitions = malloc(sizeof(List *) * numfiles); // this was changed
+  for (int i = 0; i < numfiles; i++)                    // the original was mallocing a list of lists,
+  {                                                     // this is an array of lists
     rdd->partitions[i] = list_init();
   }
 
@@ -270,6 +270,8 @@ void execute(RDD *rdd)
     rdd->partitions = partitions;
   }
   else if(rdd->trans != FILE_BACKED && rdd->trans != PARTITIONBY){
+    // check previous rdd, if it is file backed, we need to read from the file
+
     for(int i = 0; i < rdd->numpartitions; i++){
       Task* task = malloc(sizeof(Task));
       task->rdd = rdd;
@@ -286,20 +288,16 @@ void execute(RDD *rdd)
       task_queue_add(task);
     }
     
+    // what is this for?
+    /*
     while(pool->taskqueue->size >0){
       //printf("size is %d\n", pool->taskqueue->size);
     }
+    */
+   thread_pool_wait();
   }
     
   printf("Done materializing rdd %p\n", rdd);
-  return;
-}
-
-void testexecute(RDD *rdd)
-{
-  printf("called successfully");
-  printf("rdd %p\n", rdd);
-  printf("returning");
   return;
 }
 
@@ -340,6 +338,8 @@ void list_add_elem(List *list, void *data)
     list->tail->next = node;
     list->tail = node;
   }
+  list->size++;
+  printf("Added %p to list\n", data);
 }
 
 // pops the head of the list and returns the data (like FIFO queue)
@@ -447,7 +447,7 @@ int task_queue_add(Task* task)
     // wait for a task to be removed from the queue
     pthread_cond_wait(&pool->taskqueue->empty, &pool->pool_mutex);
   }
-  // check if queue is full
+  // check if queue is full, this should never happen 
   if (pool->taskqueue->size == pool->taskqueue->capacity)
   {
     printf("error adding task to queue, queue is full\n");
@@ -624,7 +624,7 @@ int count(RDD *rdd)
 void print(RDD *rdd, Printer p)
 {
   execute(rdd);
-
+  thread_pool_wait();
   // print all the items in rdd
   // aka... `p(item)` for all items in rdd
   for (int i = 0; i < rdd->numpartitions; i++) {
