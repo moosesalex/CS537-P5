@@ -282,16 +282,6 @@ void *list_pop(List *list)
   return data;
 }
 
-// pops the rear of the queue,
-// returns the data, and increases the rear
-// pointer by 1
-
-// starts a thread
-void *start_thread(void *arg)
-{
-
-}
-
 void *consumer(void *arg)
 {
   while (1)
@@ -382,8 +372,6 @@ void MS_Run()
   CPU_ZERO(&set);
 
   // Task *task = malloc(sizeof(Task));
-  
-  int THREAD_NUMBERS = CPU_COUNT(&set);
 
   if(sched_getaffinity(0, sizeof(set), &set) == -1)
   {
@@ -391,17 +379,19 @@ void MS_Run()
     exit(1);
   }
 
-  printf("number of cores available: %d\n", THREAD_NUMBERS);
+  printf("number of cores available: %d\n", pool->numthreads);
 
   // create threadpool
-  ThreadPool *pool = malloc(sizeof(ThreadPool));
+  pool = malloc(sizeof(ThreadPool));
   if(pool == NULL)
   {
     printf("error mallocing threadpool\n");
     exit(1);
   }
+  // initialize num threads
+  pool->numthreads = CPU_COUNT(&set);;
   // initialize threadpool
-  pool->threads = malloc(sizeof(pthread_t) * THREAD_NUMBERS);
+  pool->threads = malloc(sizeof(pthread_t) * pool->numthreads);
   if (pool->threads == NULL)
   {
     printf("error mallocing threadpool threads\n");
@@ -417,7 +407,7 @@ void MS_Run()
   }
 
   // create consumer threads
-  for (int i = 0; i < THREAD_NUMBERS; i++)
+  for (int i = 0; i < pool->numthreads; i++)
   {
     // create thread
     if (pthread_create(&pool->threads[i], NULL, &consumer, pool) != 0)
@@ -444,16 +434,16 @@ void MS_TearDown()
 {
 
   // wait for threads to finish
-  /*
-  for (int i = 0; i < THREAD_NUMBERS; i++)
+  
+  for (int i = 0; i < pool->numthreads; i++)
   {
-    if (pthread_join(threads[i], NULL) != 0)
+    if (pthread_join(pool->threads[i], NULL) != 0)
     {
       printf("error joining thread\n");
       exit(1);
     }
   }
-  */
+  
 
   // wait for monitor thread to finish
   /*
@@ -464,6 +454,12 @@ void MS_TearDown()
   }
   */
 
+  // free threadpool
+  free(pool->threads);
+  free(pool->taskqueue->tasks);
+  free(pool->taskqueue);
+  free(pool);
+  
   return;
 }
 
