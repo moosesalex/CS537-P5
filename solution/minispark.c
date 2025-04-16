@@ -114,6 +114,7 @@ RDD *RDDFromFiles(char **filenames, int numfiles)
   rdd->numdependencies = 0;
   rdd->trans = MAP;
   rdd->fn = (void *)identity;
+  
   return rdd;
 }
 
@@ -190,35 +191,8 @@ void execute(RDD *rdd)
   // if it does, we can execute it
   // add partitions to threadpool taskqueue for parallelism
   // if not, iterate to execute it's dependencies
-  if (rdd->numdependencies - rdd->finisheddependencies == 0)
-  {
-    printf("RDD has no dependencies, ready to execute.\n");
-    // in every Transformation case, we should add all partitions to the threadqueue?
-
-    
-    //Materializes the rdd
-    if(rdd->trans == PARTITIONBY){
-      Partitioner partitioner = (Partitioner)rdd->fn;
-      List* partitions = malloc(sizeof(List)*rdd->numpartitions);
-      for(int i = 0; i < rdd->dependencies[0]->numpartitions; i++){
-        Node* current = rdd->dependencies[0]->partitions[i].head;
-        while(current != NULL){
-          unsigned long hash = partitioner(current->data, rdd->numpartitions, rdd->ctx);
-          list_add_elem(&(partitions[hash]), current->data);
-          current = current->next;
-        }
-      }
-      rdd->partitions = partitions;
-    }
-    if(rdd->trans == FILE_BACKED){
-      printf("I don't think we're supposed to execute File Backed rdd's\n");
-      return;
-    }
-    
-    //We don't want to edit numdependencies so I made a new variable to tracked finished ones
-    rdd->backlink->finisheddependencies++;
-  }
-  else
+  rdd->finisheddependencies = 0;
+  if (rdd->numdependencies > 0)
   {
     printf("RDD has dependencies, executing them first.\n");
     for (int i = 0; i < rdd->numdependencies; i++)
@@ -226,7 +200,50 @@ void execute(RDD *rdd)
       execute(rdd->dependencies[i]);
     }
   }
-  printf("executing rdd %p\n", rdd);
+  printf("RDD has no dependencies, ready to execute.\n");
+  // in every Transformation case, we should add all partitions to the threadqueue?
+
+  
+  //Materializes the rdd
+  if(rdd->trans == PARTITIONBY){
+    Partitioner partitioner = (Partitioner)rdd->fn;
+    List* partitions = malloc(sizeof(List)*rdd->numpartitions);
+    for(int i = 0; i < rdd->dependencies[0]->numpartitions; i++){
+      Node* current = rdd->dependencies[0]->partitions[i].head;
+      while(current != NULL){
+        unsigned long hash = partitioner(current->data, rdd->numpartitions, rdd->ctx);
+        list_add_elem(&(partitions[hash]), current->data);
+        current = current->next;
+      }
+    }
+    rdd->partitions = partitions;
+  }
+  else if(rdd->trans == FILE_BACKED){
+    printf("I don't think we're supposed to materialize File Backed rdd's\n");
+  }
+  else{
+    for(int i = 0; i < rdd->numpartitions; i++){
+      Task* task = malloc(sizeof(Task));
+      task->rdd = rdd;
+      task->pnum = i;
+      TaskMetric* metric = malloc(sizeof(TaskMetric));
+      struct timespec created;
+      timespec_get(&created, TIME_UTC);
+      size_t duration = 0;
+      metric->created = created;
+      metric->duration = duration;
+      metric->rdd = rdd;
+      metric->pnum = i;
+      task->metric = metric;
+      task_queue_add(task);
+    }
+    
+    while(pool->taskqueue->size >0){
+      printf("size is %d\n", pool->taskqueue->size);
+    }
+  }
+    
+  printf("Done materializing rdd %p\n", rdd);
   return;
 }
 
@@ -351,7 +368,7 @@ TaskQueue *task_queue_init()
   return taskqueue;
 }
 
-void task_queue_add(Task *task)
+void task_queue_add(Task* task)
 {
   pthread_mutex_lock(&pool->taskqueue->queue_mutex);
   while (pool->taskqueue->size == pool->taskqueue->capacity)
@@ -371,6 +388,7 @@ void task_queue_add(Task *task)
   pool->taskqueue->size++;
   pthread_cond_signal(&pool->taskqueue->fill);
   pthread_mutex_unlock(&pool->taskqueue->queue_mutex);
+  return;
 }
 
 void MS_Run()
@@ -388,7 +406,7 @@ void MS_Run()
     exit(1);
   }
 
-  printf("number of cores available: %d\n", pool->numthreads);
+  
 
   // create threadpool
   pool = malloc(sizeof(ThreadPool));
@@ -399,6 +417,7 @@ void MS_Run()
   }
   // initialize num threads
   pool->numthreads = CPU_COUNT(&set);;
+  printf("number of cores available: %d\n", pool->numthreads);
   // initialize threadpool
   pool->threads = malloc(sizeof(pthread_t) * pool->numthreads);
   if (pool->threads == NULL)
@@ -439,10 +458,10 @@ void MS_Run()
   return;
 }
 
-int getNumThreads()
-{
-  return pool->numthreads;
-}
+//int getNumThreads()
+//{
+//  return pool->numthreads;
+//}
 
 void MS_TearDown()
 {
