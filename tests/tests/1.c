@@ -8,13 +8,19 @@ int main(int argc, char* argv[]) {
     return -1;
   }
 
-  //MS_Run();
+  MS_Run();
 
   RDD* files = RDDFromFiles(argv + 1, argc - 1);
-  count(files);
-  print(files, StringPrinter);
+  print(map(files, GetLines), StringPrinter);
 
-  //MS_TearDown();
+  MS_TearDown();
 
+
+  int num_threads = getNumThreads();
+  if (num_threads > 1) {
+    printf("Worker threads didn't terminate\n");
+    return 0;
+  }
+  
   return 0;
 }
