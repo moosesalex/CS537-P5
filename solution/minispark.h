@@ -160,4 +160,6 @@ void MS_TearDown();
 
 int task_queue_add(Task* task);
 
+void thread_pool_wait();
+
 #endif // __minispark_h__;
