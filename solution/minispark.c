@@ -256,13 +256,13 @@ void execute(RDD *rdd)
   rdd->finisheddependencies = 0;
   if (rdd->numdependencies > 0)
   {
-    printf("RDD has dependencies, executing them first.\n");
+    //printf("RDD has dependencies, executing them first.\n");
     for (int i = 0; i < rdd->numdependencies; i++)
     {
       execute(rdd->dependencies[i]);
     }
   }
-  printf("RDD has no dependencies, ready to execute.\n");
+  //printf("RDD has no dependencies, ready to execute.\n");
   // in every Transformation case, we should add all partitions to the threadqueue?
 
   
@@ -287,11 +287,11 @@ void execute(RDD *rdd)
     Mapper mapper = (Mapper)rdd->fn;
     for(int i = 0; i < rdd->dependencies[0]->numpartitions; i++){
       Node* current = rdd->dependencies[0]->partitions[i]->head;
-      List* partition;
+      List* partition = list_init();
       while (current != NULL)
       {
         void* newData;
-        while(newData = mapper(current->data) != NULL){
+        while((newData = mapper(current->data)) != NULL){
           list_add_elem(partition, newData);
         }
         current = current->next;
@@ -327,7 +327,7 @@ void execute(RDD *rdd)
    thread_pool_wait();
   }
     
-  printf("Done materializing rdd %p\n", rdd);
+  //printf("Done materializing rdd %p\n", rdd);
   return;
 }
 
@@ -369,7 +369,7 @@ void list_add_elem(List *list, void *data)
     list->tail = node;
   }
   list->size++;
-  printf("Added %p to list\n", data);
+  //printf("Added %p to list\n", data);
 }
 
 // pops the head of the list and returns the data (like FIFO queue)
