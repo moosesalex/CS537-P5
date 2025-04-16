@@ -518,12 +518,13 @@ void MS_TearDown()
   // wait for threads to finish
   pool_kill = 1;
   if (pool && pool->taskqueue) {
-    //pthread_cond_broadcast(&pool->taskqueue->fill);
+    pthread_cond_broadcast(&pool->taskqueue->fill);
   }
 
   if (pool && pool->threads) {
       for (int i = 0; i < pool->numthreads; i++) {
-          if (pthread_join(pool->threads[i], NULL) != 0) {
+          //pthread_cancel(pool->threads[i]);
+          if (pthread_tryjoin_np(pool->threads[i], NULL) != 0) {
               printf("error joining thread\n");
               exit(1);
           }
