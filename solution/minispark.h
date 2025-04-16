@@ -92,7 +92,7 @@ struct RDD
   Transform trans;  // transform type, see enum
   void *fn;         // transformation function
   void *ctx;        // used by minispark lib functions
-  List **partitions; // list of partitions
+  List **partitions; // array of lists partitions
 
   RDD *dependencies[MAXDEPS];
   int numdependencies; // 0, 1, or 2
