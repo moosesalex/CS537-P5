@@ -48,7 +48,7 @@ RDD *create_rdd(int numdeps, Transform t, void *fn, ...)
   {
     RDD *dep = va_arg(args, RDD *);
     rdd->dependencies[i] = dep;
-    maxpartitions = max(maxpartitions, dep->partitions->size);
+    maxpartitions = max(maxpartitions, (*dep->partitions)->size);
   }
   va_end(args);
 
@@ -61,11 +61,38 @@ RDD *create_rdd(int numdeps, Transform t, void *fn, ...)
   return rdd;
 }
 
+void partitions_init(RDD *rdd)
+{
+  rdd->partitions = malloc(sizeof(List *) * rdd->numpartitions);
+  for (int i = 0; i < rdd->numpartitions; i++)
+  {
+    rdd->partitions[i] = list_init();
+  }
+}
+/*
+void partitions_free(RDD *rdd)
+{
+  for (int i = 0; i < rdd->numpartitions; i++)
+  {
+    Node *current = rdd->partitions[i]->head;
+    while (current != NULL)
+    {
+      Node *next = current->next;
+      free(current);
+      current = next;
+    }
+    free(rdd->partitions[i]);
+  }
+  free(rdd->partitions);
+}
+*/
+
 /* RDD constructors */
 RDD *map(RDD *dep, Mapper fn)
 {
   RDD* rdd = create_rdd(1, MAP, fn, dep);
   rdd->numpartitions = dep->numpartitions;
+  partitions_init(rdd);
   return rdd;
 }
 
@@ -74,15 +101,16 @@ RDD *filter(RDD *dep, Filter fn, void *ctx)
   RDD *rdd = create_rdd(1, FILTER, fn, dep);
   rdd->ctx = ctx;
   rdd->numpartitions = dep->numpartitions;
+  partitions_init(rdd);
   return rdd;
 }
 
 RDD *partitionBy(RDD *dep, Partitioner fn, int numpartitions, void *ctx)
 {
   RDD *rdd = create_rdd(1, PARTITIONBY, fn, dep);
-  rdd->partitions = list_init(numpartitions);
   rdd->numpartitions = numpartitions;
   rdd->ctx = ctx;
+  partitions_init(rdd);
   return rdd;
 }
 
@@ -91,6 +119,7 @@ RDD *join(RDD *dep1, RDD *dep2, Joiner fn, void *ctx)
   RDD *rdd = create_rdd(2, JOIN, fn, dep1, dep2);
   rdd->ctx = ctx;
   rdd->numpartitions = max(dep1->numpartitions, dep2->numpartitions);
+  partitions_init(rdd);
   return rdd;
 }
 
@@ -105,7 +134,12 @@ void *identity(void *arg)
 RDD *RDDFromFiles(char **filenames, int numfiles)
 {
   RDD *rdd = malloc(sizeof(RDD));
-  rdd->partitions = list_init(numfiles);
+  rdd->partitions = malloc(sizeof(List *) * numfiles);
+  for (int i = 0; i < numfiles; i++)
+  {
+    rdd->partitions[i] = list_init();
+  }
+
 
   for (int i = 0; i < numfiles; i++)
   {
@@ -115,10 +149,10 @@ RDD *RDDFromFiles(char **filenames, int numfiles)
       perror("fopen");
       exit(1);
     }
-    list_add_elem(rdd->partitions, fp);
+    list_add_elem(rdd->partitions[i], fp);
   }
 
-  rdd->numpartitions = 1;
+  rdd->numpartitions = numfiles;
   rdd->numdependencies = 0;
   rdd->trans = FILE_BACKED;
   rdd->fn = (void *)identity;
@@ -128,32 +162,32 @@ RDD *RDDFromFiles(char **filenames, int numfiles)
 
 List *populatePartition(Task *task)
 {
-  printf("WTF\n");
+  //printf("WTF\n");
   RDD *rdd = task->rdd;
   int pnum = task->pnum;
-  List partition[MAXDEPS];
+  List *partition = list_init();
   Node *current;
-  printf("HUH\n");
+  //printf("HUH\n");
   switch (rdd->trans)
   {
   case MAP:
 
     Mapper mapper = (Mapper)rdd->fn;
-    current = rdd->dependencies[0]->partitions[pnum].head;
+    current = rdd->dependencies[0]->partitions[pnum]->head;
     while (current != NULL)
     {
       void *newData = current->data;
       list_add_elem(partition, mapper(newData));
       current = current->next;
-      printf("Test\n");
+      //printf("Test\n");
     }
-    rdd->partitions[pnum] = *partition;
+    rdd->partitions[pnum] = partition;
 
     break;
   case FILTER:
 
     Filter filter = (Filter)rdd->fn;
-    current = rdd->dependencies[0]->partitions[pnum].head;
+    current = rdd->dependencies[0]->partitions[pnum]->head;
     while (current != NULL)
     {
       void *newData = current->data;
@@ -163,18 +197,18 @@ List *populatePartition(Task *task)
       }
       current = current->next;
     }
-    rdd->partitions[pnum] = *partition;
+    rdd->partitions[pnum] = partition;
 
     break;
   case JOIN:
 
     Joiner joiner = (Joiner)rdd->fn;
-    List partition0 = rdd->dependencies[0]->partitions[pnum];
-    List partition1 = rdd->dependencies[1]->partitions[pnum];
-    Node *current0 = partition0.head;
+    List *partition0 = rdd->dependencies[0]->partitions[pnum];
+    List *partition1 = rdd->dependencies[1]->partitions[pnum];
+    Node *current0 = partition0->head;
     while (current0 != NULL)
     {
-      Node *current1 = partition1.head;
+      Node *current1 = partition1->head;
       while (current1 != NULL)
       {
         void *join = joiner(current0->data, current1->data, rdd->ctx);
@@ -186,7 +220,7 @@ List *populatePartition(Task *task)
       }
       current0 = current0->next;
     }
-    rdd->partitions[pnum] = *partition;
+    rdd->partitions[pnum] = partition;
     break;
   case PARTITIONBY:
     printf("Partition By RDD's shouldn't be executed here!\n");
@@ -221,12 +255,15 @@ void execute(RDD *rdd)
   //Materializes the rdd
   if(rdd->trans == PARTITIONBY){
     Partitioner partitioner = (Partitioner)rdd->fn;
-    List* partitions = malloc(sizeof(List)*rdd->numpartitions);
+    List** partitions = malloc(sizeof(List*) * rdd->numpartitions);
+    for (int i = 0; i < rdd->numpartitions; i++) {
+      partitions[i] = list_init();
+    }
     for(int i = 0; i < rdd->dependencies[0]->numpartitions; i++){
-      Node* current = rdd->dependencies[0]->partitions[i].head;
+      Node* current = rdd->dependencies[0]->partitions[i]->head;
       while(current != NULL){
         unsigned long hash = partitioner(current->data, rdd->numpartitions, rdd->ctx);
-        list_add_elem(&(partitions[hash]), current->data);
+        list_add_elem(partitions[hash], current->data);
         current = current->next;
       }
     }
@@ -250,7 +287,7 @@ void execute(RDD *rdd)
     }
     
     while(pool->taskqueue->size >0){
-      printf("size is %d\n", pool->taskqueue->size);
+      //printf("size is %d\n", pool->taskqueue->size);
     }
   }
     
@@ -277,6 +314,7 @@ List *list_init()
   }
   list->head = NULL;
   list->tail = NULL;
+  list->size = 0;
   return list;
 }
 
@@ -325,7 +363,7 @@ void *consumer()
   {
     // get next task from queue (should this be an array?)
     pthread_mutex_lock(&pool->taskqueue->queue_mutex);
-    while (pool->taskqueue->size == 0)
+    while (pool->taskqueue->size == 0 && !pool_kill)
     {
       // wait for a task to be added to the queue
       pthread_cond_wait(&pool->taskqueue->fill, &pool->taskqueue->queue_mutex);
@@ -479,16 +517,18 @@ void MS_TearDown()
 
   // wait for threads to finish
   pool_kill = 1;
-  pthread_cond_broadcast(&pool->taskqueue->fill);
+  if (pool && pool->taskqueue) {
+    //pthread_cond_broadcast(&pool->taskqueue->fill);
+  }
 
-  for (int i = 0; i < pool->numthreads; i++)
-  {
-    void** tr = malloc(sizeof(void*));
-    if (pthread_tryjoin_np(pool->threads[i], tr) != 1)
-    {
-      printf("error joining thread\n");
-      exit(1);
-    }
+  if (pool && pool->threads) {
+      for (int i = 0; i < pool->numthreads; i++) {
+          if (pthread_join(pool->threads[i], NULL) != 0) {
+              printf("error joining thread\n");
+              exit(1);
+          }
+      }
+      free(pool->threads);
   }
 
   // wait for monitor thread to finish
@@ -500,15 +540,25 @@ void MS_TearDown()
   }
   */
 
+  // free taskqueue
+  if (pool && pool->taskqueue) {
+    if (pool->taskqueue->tasks) {
+        free(pool->taskqueue->tasks);
+    }
+
+    pthread_mutex_destroy(&pool->taskqueue->queue_mutex);
+    pthread_cond_destroy(&pool->taskqueue->fill);
+    pthread_cond_destroy(&pool->taskqueue->empty);
+
+    free(pool->taskqueue);
+  }
+
   // free threadpool
-  free(pool->threads);
-  free(pool->taskqueue->tasks);
-  free(pool->taskqueue);
-  pthread_mutex_destroy(&pool->taskqueue->queue_mutex);
-  pthread_mutex_destroy(&pool->pool_mutex);
-  pthread_cond_destroy(&pool->taskqueue->fill);
-  pthread_cond_destroy(&pool->taskqueue->empty);
-  free(pool);
+  if (pool) {
+    pthread_mutex_destroy(&pool->pool_mutex);
+    free(pool);
+    pool = NULL;
+  }
 
   return;
 }
@@ -518,11 +568,16 @@ int count(RDD *rdd)
   execute(rdd);
 
   int count = 0;
-  Node *current = rdd->partitions->head;
-  while (current)
-  {
-    count++;
-    current = current->next;
+  if (rdd->partitions == NULL) {
+    printf("Count Error: rdd->partitions is not initialized.\n");
+    return -1;
+  }
+  for (int i = 0; i < rdd->numpartitions; i++) {
+    Node *current = rdd->partitions[i]->head;
+    while (current) {
+      count++;
+      current = current->next;
+    }
   }
   return count;
 }
@@ -533,13 +588,16 @@ void print(RDD *rdd, Printer p)
 
   // print all the items in rdd
   // aka... `p(item)` for all items in rdd
-  for (int i = 0; i < rdd->numpartitions; i++)
-  {
-    Node *current = rdd->partitions[i].head;
-    while (current != NULL)
-    {
+  for (int i = 0; i < rdd->numpartitions; i++) {
+    if (rdd->partitions[i] == NULL) {
+      printf("Partition %d is NULL\n", i);
+      exit(1);
+  }
+    Node *current = rdd->partitions[i]->head;
+    while (current != NULL) {
       p(current->data);
       current = current->next;
     }
   }
+  
 }
