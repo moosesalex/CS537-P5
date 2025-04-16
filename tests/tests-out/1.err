@@ -1,4 +1,1 @@
-<<<<<<< HEAD
-./run-tests.sh: line 27: 1555858 Segmentation fault      (core dumped) ./tests/1.tmp ./test_files/one.txt ./test_files/two.txt ./test_files/three.txt
-=======
->>>>>>> c5918891fb76a50028c081fb63cda28e61ec2ffd
+./run-tests.sh: line 27: 3248751 Segmentation fault      (core dumped) ./tests/1.tmp ./test_files/one.txt ./test_files/two.txt ./test_files/three.txt

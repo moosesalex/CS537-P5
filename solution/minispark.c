@@ -141,12 +141,6 @@ RDD *RDDFromFiles(char **filenames, int numfiles)
     rdd->partitions[i] = list_init();
   }
 
-  /*
-  rdd->partitions = malloc(sizeof(List *) * numfiles);
-  rdd->partitions = list_init();
-  */
-
-
   for (int i = 0; i < numfiles; i++)
   {
     FILE *fp = fopen(filenames[i], "r");
@@ -241,6 +235,32 @@ List *populatePartition(Task *task)
   }
   return NULL;
 }
+void free_task(Task* task){
+  free(task->metric);
+  free(task);
+}
+
+void free_list(List* list){
+  Node* current = list->head;
+  while(current != NULL){
+    Node* old = current;
+    current = current->next;
+    free(old);
+  }
+  free(list);
+  return;
+}
+
+void free_rdd(RDD* rdd){
+  for(int i = 0; i < rdd->numpartitions; i++){
+    List* partition = rdd->partitions[i];
+    free_list(partition);
+  }
+  free(rdd);
+  return;
+}
+
+
 
 void execute(RDD *rdd)
 {
@@ -248,7 +268,7 @@ void execute(RDD *rdd)
     printf("[ERROR] Null RDD pointer passed to execute()\n");
     exit(1);
   }
-  printf("[EXECUTE] Executing RDD %p | trans = %d | numdeps = %d\n", rdd, rdd->trans, rdd->numdependencies);
+  //printf("[EXECUTE] Executing RDD %p | trans = %d | numdeps = %d\n", rdd, rdd->trans, rdd->numdependencies);
   // TODO: this should check to make sure RDD has 0 dependencies
   // if it does, we can execute it
   // add partitions to threadpool taskqueue for parallelism
@@ -326,7 +346,10 @@ void execute(RDD *rdd)
     */
    thread_pool_wait();
   }
-    
+  //Free dependencies
+  for(int i = 0; i < rdd->numdependencies; i++){
+    free_rdd(rdd->dependencies[i]);
+  }
   //printf("Done materializing rdd %p\n", rdd);
   return;
 }
@@ -417,6 +440,7 @@ void *consumer()
     populatePartition(&task);
 
     pthread_mutex_lock(&pool->pool_mutex);
+    
     // decrement running tasks
     pool->runningtasks--;
 
@@ -429,6 +453,7 @@ void *consumer()
     // signal empty condition variable
     pthread_cond_signal(&pool->taskqueue->empty);
     pthread_mutex_unlock(&pool->pool_mutex);
+    
   }
   pthread_exit(0);
 }
@@ -630,6 +655,8 @@ void MS_TearDown()
     pool = NULL;
   }
 
+
+
   return;
 }
 
@@ -649,6 +676,7 @@ int count(RDD *rdd)
       current = current->next;
     }
   }
+  free(rdd);
   return count;
 }
 
@@ -669,5 +697,6 @@ void print(RDD *rdd, Printer p)
       current = current->next;
     }
   }
-  
+  free(rdd);
+  return;
 }
