@@ -152,7 +152,7 @@ RDD *RDDFromFiles(char **filenames, int numfiles)
     list_add_elem(rdd->partitions[i], fp);
   }
 
-  rdd->numpartitions = numfiles;
+  rdd->numpartitions = 1;
   rdd->numdependencies = 0;
   rdd->trans = FILE_BACKED;
   rdd->fn = (void *)identity;
