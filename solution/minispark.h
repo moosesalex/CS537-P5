@@ -42,7 +42,7 @@ typedef struct
 
 typedef struct
 {
-  Task *tasks;
+  Task **tasks;
   int capacity;
   int size;
   int front;

@@ -1,91 +1,30 @@
 
 =================================================================
-<<<<<<< HEAD
-==1610271==ERROR: LeakSanitizer: detected memory leaks
+==1662338==ERROR: LeakSanitizer: detected memory leaks
 
 Direct leak of 144 byte(s) in 6 object(s) allocated from:
-    #0 0x7f88dd8f4887 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:145
-    #1 0x55c0d65abe81 in list_init solution/minispark.c:337
+    #0 0x7f46ce270887 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:145
+    #1 0x55e15d6cbf0c in list_init solution/minispark.c:360
 
 Direct leak of 48 byte(s) in 2 object(s) allocated from:
-    #0 0x7f88dd8f4887 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:145
-    #1 0x55c0d65ac9b5 in execute solution/minispark.c:307
+    #0 0x7f46ce270887 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:145
+    #1 0x55e15d6cbf5a in partitions_init solution/minispark.c:66
 
 Direct leak of 24 byte(s) in 1 object(s) allocated from:
-    #0 0x7f88dd8f4887 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:145
-    #1 0x55c0d65ac9b5 in execute solution/minispark.c:307
-    #2 0x7ffc5e612788  ([stack]+0x20788)
+    #0 0x7f46ce270887 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:145
+    #1 0x55e15d6cc14c in RDDFromFiles solution/minispark.c:138
+    #2 0x7ffda8dcc788  ([stack]+0x20788)
 
 Indirect leak of 600 byte(s) in 5 object(s) allocated from:
-    #0 0x7f88dd8f4887 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:145
-    #1 0x7f88dd697122 in __GI___getdelim libio/iogetdelim.c:62
-
-Indirect leak of 368 byte(s) in 23 object(s) allocated from:
-    #0 0x7f88dd8f4887 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:145
-    #1 0x55c0d65ac045 in list_add_elem solution/minispark.c:352
-
-Indirect leak of 216 byte(s) in 9 object(s) allocated from:
-    #0 0x7f88dd8f4887 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:145
-    #1 0x55c0d65abe81 in list_init solution/minispark.c:337
-
-Indirect leak of 168 byte(s) in 3 object(s) allocated from:
-    #0 0x7f88dd8f4887 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:145
-    #1 0x55c0d65ac9c9 in execute solution/minispark.c:310
-
-Indirect leak of 144 byte(s) in 2 object(s) allocated from:
-    #0 0x7f88dd8f4887 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:145
-    #1 0x55c0d65abdb9 in create_rdd solution/minispark.c:36
-
-Indirect leak of 72 byte(s) in 1 object(s) allocated from:
-    #0 0x7f88dd8f4887 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:145
-    #1 0x55c0d65ac0b2 in RDDFromFiles solution/minispark.c:136
-    #2 0x7ffc5e612788  ([stack]+0x20788)
-
-Indirect leak of 48 byte(s) in 2 object(s) allocated from:
-    #0 0x7f88dd8f4887 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:145
-    #1 0x55c0d65abecf in partitions_init solution/minispark.c:66
-
-Indirect leak of 24 byte(s) in 1 object(s) allocated from:
-    #0 0x7f88dd8f4887 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:145
-    #1 0x55c0d65ac0c1 in RDDFromFiles solution/minispark.c:138
-    #2 0x7ffc5e612788  ([stack]+0x20788)
-
-SUMMARY: AddressSanitizer: 1856 byte(s) leaked in 55 allocation(s).
-=======
-==3246257==ERROR: LeakSanitizer: detected memory leaks
-
-Direct leak of 144 byte(s) in 6 object(s) allocated from:
-    #0 0x7f6c64dac887 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:145
-    #1 0x55965cd7cf0c in list_init solution/minispark.c:360
-
-Direct leak of 72 byte(s) in 3 object(s) allocated from:
-    #0 0x7f6c64dac887 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:145
-    #1 0x55965cd7da40 in execute solution/minispark.c:327
-
-Direct leak of 48 byte(s) in 2 object(s) allocated from:
-    #0 0x7f6c64dac887 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:145
-    #1 0x55965cd7cf5a in partitions_init solution/minispark.c:66
-
-Direct leak of 24 byte(s) in 1 object(s) allocated from:
-    #0 0x7f6c64dac887 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:145
-    #1 0x55965cd7d14c in RDDFromFiles solution/minispark.c:138
-    #2 0x7ffebdb86870  ([stack]+0x20870)
-
-Indirect leak of 600 byte(s) in 5 object(s) allocated from:
-    #0 0x7f6c64dac887 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:145
-    #1 0x7f6c64b4f122 in __GI___getdelim libio/iogetdelim.c:62
-
-Indirect leak of 168 byte(s) in 3 object(s) allocated from:
-    #0 0x7f6c64dac887 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:145
-    #1 0x55965cd7da54 in execute solution/minispark.c:330
+    #0 0x7f46ce270887 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:145
+    #1 0x7f46ce013122 in __GI___getdelim libio/iogetdelim.c:62
 
 Indirect leak of 80 byte(s) in 5 object(s) allocated from:
-    #0 0x7f6c64dac887 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:145
-    #1 0x55965cd7d0d0 in list_add_elem solution/minispark.c:375
+    #0 0x7f46ce270887 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:145
+    #1 0x55e15d6cc0d0 in list_add_elem solution/minispark.c:375
 
 Indirect leak of 72 byte(s) in 3 object(s) allocated from:
-    #0 0x7f6c64dac887 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:145
-    #1 0x55965cd7cf0c in list_init solution/minispark.c:360
+    #0 0x7f46ce270887 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:145
+    #1 0x55e15d6cbf0c in list_init solution/minispark.c:360
 
-SUMMARY: AddressSanitizer: 1208 byte(s) leaked in 28 allocation(s).
->>>>>>> 5af60af6584261defb60948847706ff4a3f6bac0
+SUMMARY: AddressSanitizer: 968 byte(s) leaked in 22 allocation(s).

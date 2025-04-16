@@ -427,7 +427,7 @@ void *consumer()
       break;
     }
     // task found
-    Task task = pool->taskqueue->tasks[pool->taskqueue->rear];
+    Task *task = pool->taskqueue->tasks[pool->taskqueue->rear];
     // shorten taskqueue
     pool->taskqueue->rear = (pool->taskqueue->rear + 1) % pool->taskqueue->capacity;
     pool->taskqueue->size--;
@@ -437,9 +437,11 @@ void *consumer()
 
     pthread_mutex_unlock(&pool->pool_mutex);
     // execute task
-    populatePartition(&task);
+    populatePartition(task);
 
     pthread_mutex_lock(&pool->pool_mutex);
+    free(task->metric);
+    free(task);
     
     // decrement running tasks
     pool->runningtasks--;
@@ -466,7 +468,7 @@ TaskQueue *task_queue_init()
     printf("error mallocing task queue\n");
     exit(1);
   }
-  taskqueue->tasks = malloc(sizeof(Task) * TASK_QUEUE_BUFFER);
+  taskqueue->tasks = malloc(sizeof(Task *) * TASK_QUEUE_BUFFER);
   if (taskqueue->tasks == NULL)
   {
     printf("error mallocing tasks array\n");
@@ -509,7 +511,8 @@ int task_queue_add(Task* task)
     exit(1);
   }
   // add task to queue
-  pool->taskqueue->tasks[pool->taskqueue->front] = *task;
+  
+  pool->taskqueue->tasks[pool->taskqueue->front] = task;
   pool->taskqueue->front = (pool->taskqueue->front + 1) % pool->taskqueue->capacity;
   pool->taskqueue->size++;
   pthread_cond_signal(&pool->taskqueue->fill);
