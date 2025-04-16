@@ -99,7 +99,7 @@ struct RDD
   int finisheddependencies;
   int numpartitions;
   // you may want extra data members here
-  RDD *backlink; // pointer to the dependendent RDD. the backlink's numdependencies should be reduced by 1 when the current RDD is done
+  Task** tasks;
 };
 
 //////// actions ////////

@@ -256,6 +256,15 @@ void free_rdd(RDD* rdd){
     List* partition = rdd->partitions[i];
     free_list(partition);
   }
+  /*
+  if(rdd->tasks != NULL){
+    for(int i = 0; i < rdd->numpartitions; i++){
+      Task* task = rdd->tasks[i];
+      free_task(task);
+    }
+    free(rdd->tasks);
+  }
+  */
   free(rdd);
   return;
 }
@@ -322,7 +331,7 @@ void execute(RDD *rdd)
     
   }
   else if(rdd->trans != FILE_BACKED && rdd->trans != PARTITIONBY){
-    
+    //rdd->tasks = malloc(sizeof(Task*)*rdd->numpartitions);
     for(int i = 0; i < rdd->numpartitions; i++){
       Task* task = malloc(sizeof(Task));
       task->rdd = rdd;
@@ -337,19 +346,15 @@ void execute(RDD *rdd)
       metric->pnum = i;
       task->metric = metric;
       task_queue_add(task);
+      //rdd->tasks[i] = task;
     }
-    // what is this for?
-    /*
-    while(pool->taskqueue->size >0){
-      //printf("size is %d\n", pool->taskqueue->size);
-    }
-    */
-   thread_pool_wait();
   }
   //Free dependencies
+  thread_pool_wait();
   for(int i = 0; i < rdd->numdependencies; i++){
     free_rdd(rdd->dependencies[i]);
   }
+  
   //printf("Done materializing rdd %p\n", rdd);
   return;
 }
