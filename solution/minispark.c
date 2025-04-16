@@ -134,11 +134,17 @@ void *identity(void *arg)
 RDD *RDDFromFiles(char **filenames, int numfiles)
 {
   RDD *rdd = malloc(sizeof(RDD));
+
   rdd->partitions = malloc(sizeof(List *) * numfiles); // this was changed
   for (int i = 0; i < numfiles; i++)                    // the original was mallocing a list of lists,
   {                                                     // this is an array of lists
     rdd->partitions[i] = list_init();
   }
+
+  /*
+  rdd->partitions = malloc(sizeof(List *) * numfiles);
+  rdd->partitions = list_init();
+  */
 
 
   for (int i = 0; i < numfiles; i++)
@@ -149,10 +155,10 @@ RDD *RDDFromFiles(char **filenames, int numfiles)
       perror("fopen");
       exit(1);
     }
-    list_add_elem(rdd->partitions[i], fp);
+    list_add_elem(rdd->partitions, fp);
   }
 
-  rdd->numpartitions = numfiles;
+  rdd->numpartitions = 1;
   rdd->numdependencies = 0;
   rdd->trans = FILE_BACKED;
   rdd->fn = (void *)identity;
@@ -562,7 +568,8 @@ void MS_TearDown()
 
   if (pool && pool->threads) {
       for (int i = 0; i < pool->numthreads; i++) {
-          if (pthread_join(pool->threads[i], NULL) != 0) {
+          //pthread_cancel(pool->threads[i]);
+          if (pthread_tryjoin_np(pool->threads[i], NULL) != 0) {
               printf("error joining thread\n");
               exit(1);
           }

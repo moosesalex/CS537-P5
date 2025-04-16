@@ -3,6 +3,7 @@ Added 0x563ef4de9c90 to list
 Added 0x563ef4de9e90 to list
 RDD has dependencies, executing them first.
 RDD has no dependencies, ready to execute.
+<<<<<<< HEAD
 Done materializing rdd 0x563ef4de89b0
 RDD has no dependencies, ready to execute.
 Added 0x7f2b44000b90 to list
@@ -12,3 +13,9 @@ Done materializing rdd 0x563ef4dea090
 one
 one
 one
+=======
+Done materializing rdd 0x55ee7d5799b0
+RDD has no dependencies, ready to execute.
+Done materializing rdd 0x55ee7d57a080
+error joining thread
+>>>>>>> a98da3aa2ced690dc35beb93edd6693b91437e7d
