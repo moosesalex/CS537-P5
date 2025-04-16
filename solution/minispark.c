@@ -362,22 +362,43 @@ void *consumer()
   while (!pool_kill)
   {
     // get next task from queue (should this be an array?)
-    pthread_mutex_lock(&pool->taskqueue->queue_mutex);
+    pthread_mutex_lock(&pool->pool_mutex);
     while (pool->taskqueue->size == 0 && !pool_kill)
     {
       // wait for a task to be added to the queue
-      pthread_cond_wait(&pool->taskqueue->fill, &pool->taskqueue->queue_mutex);
+      pthread_cond_wait(&pool->taskqueue->fill, &pool->pool_mutex);
+    }
+    if (pool_kill)
+    {
+      pthread_mutex_unlock(&pool->pool_mutex);
+      break;
     }
     // task found
     Task task = pool->taskqueue->tasks[pool->taskqueue->rear];
-    // shorted taskqueue
+    // shorten taskqueue
     pool->taskqueue->rear = (pool->taskqueue->rear + 1) % pool->taskqueue->capacity;
     pool->taskqueue->size--;
+
+    // increment running tasks
+    pool->runningtasks++;
+
+    pthread_mutex_unlock(&pool->pool_mutex);
     // execute task
     populatePartition(&task);
+
+    pthread_mutex_lock(&pool->pool_mutex);
+    // decrement running tasks
+    pool->runningtasks--;
+
+    // If no running tasks AND no tasks waiting, signal we're done
+    if (pool->runningtasks == 0 && pool->taskqueue->size == 0)
+    {
+      pthread_cond_signal(&pool->pool_cond);
+    }
+
     // signal empty condition variable
     pthread_cond_signal(&pool->taskqueue->empty);
-    pthread_mutex_unlock(&pool->taskqueue->queue_mutex);
+    pthread_mutex_unlock(&pool->pool_mutex);
   }
   pthread_exit(0);
 }
@@ -420,11 +441,11 @@ TaskQueue *task_queue_init()
 
 int task_queue_add(Task* task)
 {
-  pthread_mutex_lock(&pool->taskqueue->queue_mutex);
+  pthread_mutex_lock(&pool->pool_mutex);
   while (pool->taskqueue->size == pool->taskqueue->capacity)
   {
     // wait for a task to be removed from the queue
-    pthread_cond_wait(&pool->taskqueue->empty, &pool->taskqueue->queue_mutex);
+    pthread_cond_wait(&pool->taskqueue->empty, &pool->pool_mutex);
   }
   // check if queue is full
   if (pool->taskqueue->size == pool->taskqueue->capacity)
@@ -437,9 +458,44 @@ int task_queue_add(Task* task)
   pool->taskqueue->front = (pool->taskqueue->front + 1) % pool->taskqueue->capacity;
   pool->taskqueue->size++;
   pthread_cond_signal(&pool->taskqueue->fill);
-  pthread_mutex_unlock(&pool->taskqueue->queue_mutex);
+  pthread_mutex_unlock(&pool->pool_mutex);
   return 0;
 }
+
+void thread_pool_init(int numthreads)
+{
+  pool = malloc(sizeof(ThreadPool));
+  if (pool == NULL)
+  {
+    printf("error mallocing threadpool\n");
+    exit(1);
+  }
+  // set threads and running tasks
+  pool->numthreads = numthreads;
+  pool->runningtasks = 0;
+  // allocate threads
+  pool->threads = malloc(sizeof(pthread_t) * numthreads);
+  if (pool->threads == NULL)
+  {
+    printf("error mallocing threadpool threads\n");
+    exit(1);
+  }
+  // initialize task queue
+  pool->taskqueue = task_queue_init();
+  // initialize lock
+  if (pthread_mutex_init(&pool->pool_mutex, NULL) != 0)
+  {
+    printf("error initializing pool_mutex\n");
+    exit(1);
+  }
+  // initialize condition variable
+  if (pthread_cond_init(&pool->pool_cond, NULL) != 0)
+  {
+    printf("error initializing pool_cond\n");
+    exit(1);
+  }
+}
+
 
 void MS_Run()
 {
@@ -456,32 +512,8 @@ void MS_Run()
     exit(1);
   }
 
-  
-
   // create threadpool
-  pool = malloc(sizeof(ThreadPool));
-  if (pool == NULL)
-  {
-    printf("error mallocing threadpool\n");
-    exit(1);
-  }
-  // initialize num threads
-  pool->numthreads = CPU_COUNT(&set);;
-  // initialize threadpool
-  pool->threads = malloc(sizeof(pthread_t) * pool->numthreads);
-  if (pool->threads == NULL)
-  {
-    printf("error mallocing threadpool threads\n");
-    exit(1);
-  }
-  // initialize task queue
-  pool->taskqueue = task_queue_init();
-  // initialize lock
-  if (pthread_mutex_init(&pool->pool_mutex, NULL) != 0)
-  {
-    printf("error initializing pool_mutex\n");
-    exit(1);
-  }
+  thread_pool_init(CPU_COUNT(&set));
 
   // create consumer threads
   for (int i = 0; i < pool->numthreads; i++)
@@ -507,15 +539,22 @@ void MS_Run()
   return;
 }
 
-int getNumThreads()
+
+void thread_pool_wait()
 {
-  return pool->numthreads;
+  usleep(1000); // this is to help make sure at least one task is added to the queue
+  pthread_mutex_lock(&pool->pool_mutex);
+  while (pool->taskqueue->size > 0) {
+    pthread_cond_wait(&pool->taskqueue->empty, &pool->pool_mutex);
+  }
+  pthread_mutex_unlock(&pool->pool_mutex);
 }
 
 void MS_TearDown()
 {
 
   // wait for threads to finish
+  thread_pool_wait();
   pool_kill = 1;
   if (pool && pool->taskqueue) {
     pthread_cond_broadcast(&pool->taskqueue->fill);

@@ -60,7 +60,10 @@ typedef struct
   TaskQueue *taskqueue;
   pthread_t *threads;
   pthread_mutex_t pool_mutex;
+  pthread_cond_t pool_cond;
   int numthreads;
+  int runningtasks;
+  
 } ThreadPool;
 
 typedef struct RDD RDD;   // forward decl. of struct RDD
