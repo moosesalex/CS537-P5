@@ -129,6 +129,7 @@ List* populatePartition(Task* task){
       while(current != NULL){
         void* newData = current->data;
         list_add_elem(partition, mapper(newData));
+        current = current->next;
       }
       rdd->partitions[pnum] = *partition;
 
@@ -143,6 +144,7 @@ List* populatePartition(Task* task){
         if(filter(newData, rdd->ctx)){
           list_add_elem(partition, newData);
         }
+        current = current->next;
       }
       rdd->partitions[pnum] = *partition;
 
@@ -161,7 +163,9 @@ List* populatePartition(Task* task){
           if(join != NULL){
             list_add_elem(partition, join);
           }
+          current1 = current1->next;
         }
+        current0 = current0->next;
       }
       rdd->partitions[pnum] = *partition;
       break;
@@ -191,19 +195,24 @@ void execute(RDD *rdd)
     
     //Materializes the rdd
     switch(rdd->trans){
-      case MAP:
-        
-        break;
-      case FILTER:
-        
-        break;
-      case JOIN:
-
-        break;
       case PARTITIONBY:
-
+        Partitioner partitioner = (Partitioner)rdd->fn;
+        List** partitions = malloc(sizeof(List*)*rdd->numpartitions);
+        for(int i = 0; i < rdd->numpartitions; i++){
+          partitions[i] = malloc(sizeof(List));
+        }
+        for(int i = 0; i < rdd->dependencies[0]->numpartitions; i++){
+          Node* current = rdd->dependencies[0]->partitions[i].head;
+          while(current != NULL){
+            unsigned long hash = partitioner(current->data, rdd->numpartitions, rdd->ctx);
+            list_add_elem(partitions[hash], current->data);
+            current = current->next;
+          }
+        }
+        rdd->partitions = partitions;
         break;
       case FILE_BACKED:
+        printf("I don't think we're supposed to execute File Backed rdd's\n");
         return;
         break;
     }
