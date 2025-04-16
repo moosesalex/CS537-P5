@@ -1,5 +1,3 @@
-[EXECUTE] Executing RDD 0x55a4f36fe080 | trans = 0 | numdeps = 1
-[EXECUTE] Executing RDD 0x55a4f36fd9b0 | trans = 4 | numdeps = 0
 one
 two
 three

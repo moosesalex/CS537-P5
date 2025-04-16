@@ -248,7 +248,7 @@ void execute(RDD *rdd)
     printf("[ERROR] Null RDD pointer passed to execute()\n");
     exit(1);
   }
-  printf("[EXECUTE] Executing RDD %p | trans = %d | numdeps = %d\n", rdd, rdd->trans, rdd->numdependencies);
+  //printf("[EXECUTE] Executing RDD %p | trans = %d | numdeps = %d\n", rdd, rdd->trans, rdd->numdependencies);
   // TODO: this should check to make sure RDD has 0 dependencies
   // if it does, we can execute it
   // add partitions to threadpool taskqueue for parallelism
@@ -613,7 +613,7 @@ void MS_TearDown()
   // free taskqueue
   if (pool && pool->taskqueue) {
     if (pool->taskqueue->tasks) {
-        free(pool->taskqueue->tasks);
+      free(pool->taskqueue->tasks);
     }
 
     pthread_mutex_destroy(&pool->taskqueue->queue_mutex);
@@ -671,3 +671,4 @@ void print(RDD *rdd, Printer p)
   }
   
 }
+
