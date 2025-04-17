@@ -1,0 +1,25 @@
+==================
+WARNING: ThreadSanitizer: data race (pid=3323277)
+  Read of size 4 at 0x55c6670b0020 by thread T8 (mutexes: write M1):
+    #0 consumer ../../solution/minispark.c:417 (17.tmp+0x3769)
+
+  Previous write of size 4 at 0x55c6670b0020 by main thread:
+    #0 MS_TearDown ../../solution/minispark.c:613 (17.tmp+0x41e7)
+    #1 main /home/asnyder/private/cs537/p5/tests/tests/17.c:36 (17.tmp+0x2906)
+
+  Location is global 'pool_kill' of size 4 at 0x55c6670b0020 (17.tmp+0x000000008020)
+
+  Mutex M1 (0x7b1c00000010) created at:
+    #0 pthread_mutex_init ../../../../src/libsanitizer/tsan/tsan_interceptors_posix.cpp:1227 (libtsan.so.0+0x4bee1)
+    #1 thread_pool_init ../../solution/minispark.c:541 (17.tmp+0x3b8d)
+    #2 MS_Run ../../solution/minispark.c:571 (17.tmp+0x3c82)
+    #3 main /home/asnyder/private/cs537/p5/tests/tests/17.c:16 (17.tmp+0x27ea)
+
+  Thread T8 (tid=3323307, running) created by main thread at:
+    #0 pthread_create ../../../../src/libsanitizer/tsan/tsan_interceptors_posix.cpp:969 (libtsan.so.0+0x605b8)
+    #1 MS_Run ../../solution/minispark.c:577 (17.tmp+0x3cd2)
+    #2 main /home/asnyder/private/cs537/p5/tests/tests/17.c:16 (17.tmp+0x27ea)
+
+SUMMARY: ThreadSanitizer: data race ../../solution/minispark.c:417 in consumer
+==================
+ThreadSanitizer: reported 1 warnings

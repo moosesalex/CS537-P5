@@ -1,0 +1,1 @@
+./run-tests.sh: line 27: 3329106 Segmentation fault      (core dumped) ./tests/20.tmp
